@@ -66,6 +66,42 @@ function clearSessionKey() {
 }
 
 /**
+ * Toggle session key visibility
+ */
+function toggleSessionKeyVisibility() {
+  const input = document.getElementById('sessionKey');
+  const toggle = document.getElementById('sessionKeyToggle');
+  
+  if (input.type === 'password') {
+    input.type = 'text';
+    toggle.textContent = '🙈';
+    toggle.title = 'Hide password';
+  } else {
+    input.type = 'password';
+    toggle.textContent = '👁️';
+    toggle.title = 'Show password';
+  }
+}
+
+/**
+ * Toggle password visibility for any password field
+ */
+function togglePasswordVisibility(inputId, toggleId) {
+  const input = document.getElementById(inputId);
+  const toggle = document.getElementById(toggleId);
+  
+  if (input.type === 'password') {
+    input.type = 'text';
+    toggle.textContent = '🙈';
+    toggle.title = 'Hide password';
+  } else {
+    input.type = 'password';
+    toggle.textContent = '👁️';
+    toggle.title = 'Show password';
+  }
+}
+
+/**
  * Handle image file selection
  */
 document.addEventListener('DOMContentLoaded', () => {
@@ -233,9 +269,42 @@ function displayImagePreview() {
     preview.innerHTML = `
       <img src="${img.data}" alt="${img.name}">
       <button class="remove-btn" onclick="removeImage(${index})" title="Remove image">×</button>
+      <button class="insert-btn" onclick="insertImageMarker(${index})" title="Insert at cursor position">📍 Insert Here</button>
     `;
     container.appendChild(preview);
   });
+}
+
+/**
+ * Insert image marker at cursor position in textarea
+ */
+function insertImageMarker(index) {
+  const textarea = document.getElementById('note');
+  const img = uploadedImages[index];
+  const marker = `[IMAGE:${index}:${img.name}]`;
+  
+  // Get cursor position
+  const cursorPos = textarea.selectionStart;
+  const textBefore = textarea.value.substring(0, cursorPos);
+  const textAfter = textarea.value.substring(textarea.selectionEnd);
+  
+  // Insert marker at cursor position
+  textarea.value = textBefore + marker + textAfter;
+  
+  // Set cursor position after the marker
+  const newCursorPos = cursorPos + marker.length;
+  textarea.setSelectionRange(newCursorPos, newCursorPos);
+  textarea.focus();
+  
+  // Visual feedback
+  const btn = event.target;
+  const originalText = btn.textContent;
+  btn.textContent = '✅ Inserted!';
+  btn.style.background = 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)';
+  setTimeout(() => {
+    btn.textContent = originalText;
+    btn.style.background = '';
+  }, 1500);
 }
 
 /**
@@ -244,6 +313,22 @@ function displayImagePreview() {
 function removeImage(index) {
   uploadedImages.splice(index, 1);
   displayImagePreview();
+  
+  // Update markers in textarea
+  const textarea = document.getElementById('note');
+  let text = textarea.value;
+  
+  // Remove markers for deleted image
+  const regex = new RegExp(`\\[IMAGE:${index}:[^\\]]+\\]`, 'g');
+  text = text.replace(regex, '');
+  
+  // Update index numbers for remaining images
+  for (let i = index + 1; i < uploadedImages.length + 1; i++) {
+    const oldMarker = new RegExp(`\\[IMAGE:${i}:`, 'g');
+    text = text.replace(oldMarker, `[IMAGE:${i - 1}:`);
+  }
+  
+  textarea.value = text;
 }
 
 /**
@@ -290,12 +375,31 @@ async function createNote() {
       content = `[TITLE]${noteTitle.trim()}[/TITLE]\n\n`;
     }
     
-    content += note;
+    // Process text with inline image markers
+    let processedNote = note;
     
-    // Append images with special markers
-    if (uploadedImages.length > 0) {
+    // Replace image markers with actual image data inline
+    uploadedImages.forEach((img, index) => {
+      const marker = `[IMAGE:${index}:${img.name}]`;
+      const imageEmbed = `[INLINE_IMG:${img.name}]${img.data}[/INLINE_IMG]`;
+      processedNote = processedNote.replace(marker, imageEmbed);
+    });
+    
+    content += processedNote;
+    
+    // Append remaining images that weren't inserted inline (for backward compatibility)
+    const insertedImages = new Set();
+    uploadedImages.forEach((img, index) => {
+      const marker = `[IMAGE:${index}:${img.name}]`;
+      if (note.includes(marker)) {
+        insertedImages.add(index);
+      }
+    });
+    
+    const remainingImages = uploadedImages.filter((_, index) => !insertedImages.has(index));
+    if (remainingImages.length > 0) {
       content += '\n\n[ENCRYPTED_IMAGES_START]\n';
-      uploadedImages.forEach((img, index) => {
+      remainingImages.forEach((img) => {
         content += `[IMG:${img.name}]${img.data}[/IMG]\n`;
       });
       content += '[ENCRYPTED_IMAGES_END]';
@@ -399,11 +503,20 @@ async function readNote() {
     }
     
     if (parsed.text) {
-      outputHTML += escapeHtml(parsed.text);
+      let textWithImages = escapeHtml(parsed.text);
+      
+      // Replace inline image placeholders with actual images
+      parsed.inlineImages.forEach(img => {
+        const imgTag = `<br><img src="${img.data}" alt="${img.name}" title="${img.name}" style="max-width: 100%; border-radius: 8px; margin: 10px 0;"><br>`;
+        textWithImages = textWithImages.replace(img.placeholder, imgTag);
+      });
+      
+      outputHTML += textWithImages;
     }
     
+    // Display remaining images at the end (old format)
     if (parsed.images.length > 0) {
-      outputHTML += '<br><br><strong>📷 Images:</strong><br>';
+      outputHTML += '<br><br><strong>📷 Additional Images:</strong><br>';
       parsed.images.forEach(img => {
         outputHTML += `<img src="${img.data}" alt="${img.name}" title="${img.name}"><br>`;
       });
@@ -450,7 +563,8 @@ function parseContentWithImages(content) {
   const result = {
     title: '',
     text: '',
-    images: []
+    images: [],
+    inlineImages: [] // For images embedded in text
   };
 
   // Extract title if present
@@ -461,17 +575,32 @@ function parseContentWithImages(content) {
     content = content.replace(/\[TITLE\].*?\[\/TITLE\]\s*/, '');
   }
 
-  // Check if content has images
+  // Extract inline images first
+  const inlineImageRegex = /\[INLINE_IMG:(.*?)\](data:image\/[^[]+)\[\/INLINE_IMG\]/g;
+  let match;
+  let textWithPlaceholders = content;
+  let placeholderIndex = 0;
+  
+  while ((match = inlineImageRegex.exec(content)) !== null) {
+    result.inlineImages.push({
+      name: match[1],
+      data: match[2],
+      placeholder: `__INLINE_IMAGE_${placeholderIndex}__`
+    });
+    textWithPlaceholders = textWithPlaceholders.replace(match[0], `__INLINE_IMAGE_${placeholderIndex}__`);
+    placeholderIndex++;
+  }
+
+  // Check if content has images at the end (old format)
   const imageStartMarker = '[ENCRYPTED_IMAGES_START]';
   const imageEndMarker = '[ENCRYPTED_IMAGES_END]';
   
-  if (content.includes(imageStartMarker) && content.includes(imageEndMarker)) {
-    const parts = content.split(imageStartMarker);
+  if (textWithPlaceholders.includes(imageStartMarker) && textWithPlaceholders.includes(imageEndMarker)) {
+    const parts = textWithPlaceholders.split(imageStartMarker);
     result.text = parts[0].trim();
     
     const imageSection = parts[1].split(imageEndMarker)[0];
     const imageRegex = /\[IMG:(.*?)\](data:image\/.*?)\[\/IMG\]/g;
-    let match;
     
     while ((match = imageRegex.exec(imageSection)) !== null) {
       result.images.push({
@@ -480,7 +609,7 @@ function parseContentWithImages(content) {
       });
     }
   } else {
-    result.text = content;
+    result.text = textWithPlaceholders.trim();
   }
 
   return result;

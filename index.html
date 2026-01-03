@@ -428,6 +428,7 @@
       border-radius: 8px;
       overflow: hidden;
       border: 2px solid var(--input-border);
+      padding-bottom: 35px; /* Space for insert button */
     }
 
     .image-preview img {
@@ -450,10 +451,35 @@
       font-size: 16px;
       line-height: 1;
       padding: 0;
+      z-index: 10;
     }
 
     .image-preview .remove-btn:hover {
       background: #d32f2f;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .image-preview .insert-btn {
+      position: absolute;
+      bottom: 5px;
+      left: 5px;
+      right: 5px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 5px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .image-preview .insert-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 3px 10px rgba(102, 126, 234, 0.4);
     }
 
     .decrypted-content img {
@@ -624,12 +650,24 @@
         Set a session password to decrypt multiple notes without re-entering the password each time.
       </p>
       <div style="display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap;">
-        <input 
-          type="password" 
-          id="sessionKey" 
-          placeholder="Enter session password..." 
-          style="flex: 1; min-width: 200px; margin-bottom: 0;"
-        >
+        <div style="flex: 1; min-width: 200px; position: relative;">
+          <input 
+            type="password" 
+            id="sessionKey" 
+            placeholder="Enter session password..." 
+            style="width: 100%; margin-bottom: 0; padding-right: 40px;"
+          >
+          <button 
+            onclick="toggleSessionKeyVisibility()" 
+            id="sessionKeyToggle"
+            style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; font-size: 18px; padding: 5px 8px; color: var(--text-color); opacity: 0.6; transition: opacity 0.2s;"
+            title="Show/Hide password"
+            onmouseover="this.style.opacity='1'" 
+            onmouseout="this.style.opacity='0.6'"
+          >
+            👁️
+          </button>
+        </div>
         <button onclick="setSessionKey()" style="white-space: nowrap;">
           🔓 Set Session Key
         </button>
@@ -684,9 +722,25 @@
           📋 Paste from Clipboard
         </button>
         <div id="imagePreview" class="image-preview-container"></div>
+        
+        <p style="font-size: 13px; margin-top: 10px; padding: 10px; background: var(--input-bg); border-radius: 6px; border-left: 3px solid var(--primary-color);">
+          💡 <strong>Tip:</strong> Place cursor in text where you want an image, then click "Insert Here" button on the image preview.
+        </p>
       </div>
 
-      <input id="password" type="password" placeholder="Enter a strong secret key (or use session key)">
+      <div style="position: relative;">
+        <input id="password" type="password" placeholder="Enter a strong secret key (or use session key)" style="padding-right: 40px;">
+        <button 
+          onclick="togglePasswordVisibility('password', 'passwordToggle')" 
+          id="passwordToggle"
+          style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; font-size: 18px; padding: 5px 8px; color: var(--text-color); opacity: 0.6; transition: opacity 0.2s;"
+          title="Show/Hide password"
+          onmouseover="this.style.opacity='1'" 
+          onmouseout="this.style.opacity='0.6'"
+        >
+          👁️
+        </button>
+      </div>
       <button onclick="createNote()">🔒 Encrypt & Save</button>
       <p id="createSessionKeyHint" style="display: none; font-size: 13px; margin-top: 10px; color: var(--primary-color); font-weight: 600;">
         ✨ Session key is active - password field is optional
@@ -697,7 +751,19 @@
     <div class="card">
       <h2>👁️ Read Secure Note</h2>
       <input id="noteId" placeholder="Enter Note ID">
-      <input id="readPassword" type="password" placeholder="Enter secret key (or use session key)">
+      <div style="position: relative;">
+        <input id="readPassword" type="password" placeholder="Enter secret key (or use session key)" style="padding-right: 40px;">
+        <button 
+          onclick="togglePasswordVisibility('readPassword', 'readPasswordToggle')" 
+          id="readPasswordToggle"
+          style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; font-size: 18px; padding: 5px 8px; color: var(--text-color); opacity: 0.6; transition: opacity 0.2s;"
+          title="Show/Hide password"
+          onmouseover="this.style.opacity='1'" 
+          onmouseout="this.style.opacity='0.6'"
+        >
+          👁️
+        </button>
+      </div>
       <button onclick="readNote()">🔓 Decrypt & Read</button>
       <p id="sessionKeyHint" style="display: none; font-size: 13px; margin-top: 10px; color: var(--primary-color); font-weight: 600;">
         ✨ Session key is active - password field is optional
