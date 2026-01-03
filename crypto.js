@@ -4,6 +4,34 @@
  */
 
 /**
+ * Convert ArrayBuffer to Base64 (handles large data without stack overflow)
+ */
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunkSize = 8192; // Process in chunks to avoid stack overflow
+  
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+    binary += String.fromCharCode.apply(null, chunk);
+  }
+  
+  return btoa(binary);
+}
+
+/**
+ * Convert Base64 to Uint8Array
+ */
+function base64ToUint8Array(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+/**
  * Derives a cryptographic key from a password using PBKDF2
  * @param {string} password - User's password
  * @param {Uint8Array} salt - Random salt for key derivation
@@ -59,11 +87,11 @@ async function encrypt(text, password) {
     enc.encode(text)
   );
 
-  // Return base64-encoded values for storage/transmission
+  // Return base64-encoded values for storage/transmission (using chunk-based conversion)
   return {
-    cipherText: btoa(String.fromCharCode(...new Uint8Array(cipherText))),
-    iv: btoa(String.fromCharCode(...iv)),
-    salt: btoa(String.fromCharCode(...salt))
+    cipherText: arrayBufferToBase64(cipherText),
+    iv: arrayBufferToBase64(iv),
+    salt: arrayBufferToBase64(salt)
   };
 }
 
@@ -77,10 +105,10 @@ async function encrypt(text, password) {
 async function decrypt(data, password) {
   const dec = new TextDecoder();
 
-  // Decode base64 values back to Uint8Array
-  const cipher = Uint8Array.from(atob(data.cipherText), c => c.charCodeAt(0));
-  const iv = Uint8Array.from(atob(data.iv), c => c.charCodeAt(0));
-  const salt = Uint8Array.from(atob(data.salt), c => c.charCodeAt(0));
+  // Decode base64 values back to Uint8Array (using helper function)
+  const cipher = base64ToUint8Array(data.cipherText);
+  const iv = base64ToUint8Array(data.iv);
+  const salt = base64ToUint8Array(data.salt);
 
   // Derive decryption key (must match encryption key)
   const key = await deriveKey(password, salt);
