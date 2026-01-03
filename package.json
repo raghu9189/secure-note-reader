@@ -1,0 +1,21 @@
+{
+  "name": "secure-note-app",
+  "version": "2.0.0",
+  "description": "Monolithic encrypted notes app with zero-knowledge architecture - ZERO DEPENDENCIES!",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "encryption",
+    "secure",
+    "notes",
+    "zero-knowledge",
+    "zero-dependencies",
+    "monolithic"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {}
+}
