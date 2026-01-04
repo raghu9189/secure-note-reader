@@ -880,107 +880,119 @@
     </div>
 
     <div class="card">
-      <h2>✏️ Update Existing Note</h2>
-      <p class="info">
-        📝 Update an existing note with new content. Requires the original password to verify and re-encrypt.
-      </p>
-      <input id="updateNoteId" placeholder="Enter Note ID to update">
-      <div style="position: relative;">
-        <input id="updatePassword" type="password" placeholder="Enter original secret key (or use session key)" style="padding-right: 40px;">
-        <button 
-          onclick="togglePasswordVisibility('updatePassword', 'updatePasswordToggle')" 
-          id="updatePasswordToggle"
-          class="password-toggle"
-          title="Show/Hide password"
-        >
-          👁️
-        </button>
+      <div onclick="toggleSection('updateNoteSection')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+        <h2 style="margin: 0;">✏️ Update Existing Note</h2>
+        <span id="updateNoteSectionToggle" style="font-size: 24px; transition: transform 0.3s;">▼</span>
       </div>
-      <button onclick="loadNoteForUpdate()" style="background: var(--primary-color); margin-bottom: 10px;">
-        📖 Load Note for Editing
-      </button>
-      <div id="updateNoteForm" style="display: none;">
-        <hr style="border: none; border-top: 1px solid var(--input-border); margin: 20px 0;">
-        <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px;">
-          📝 Note Title (Optional)
-        </label>
-        <input id="updateTitle" placeholder="Enter note title">
-        <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px; margin-top: 15px;">
-          📄 Note Content
-        </label>
-        <textarea id="updateContent" placeholder="Edit your note content here..." rows="8"></textarea>
-        
-        <!-- Image Upload Section for Update -->
-        <div style="margin-top: 15px; padding: 15px; background: var(--input-bg); border-radius: 6px; border-left: 3px solid var(--primary-color);">
-          <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px;">
-            📷 Add New Images
+      <div id="updateNoteSection" style="display: none; margin-top: 15px;">
+        <p style="font-size: 13px; opacity: 0.8; margin-bottom: 15px;">
+          📝 Edit an existing note. Verify with original password.
+        </p>
+        <input id="updateNoteId" placeholder="Enter Note ID to update" style="margin-bottom: 10px;">
+        <div style="position: relative; margin-bottom: 10px;">
+          <input id="updatePassword" type="password" placeholder="Enter original secret key (or use session key)" style="padding-right: 40px;">
+          <button 
+            onclick="togglePasswordVisibility('updatePassword', 'updatePasswordToggle')" 
+            id="updatePasswordToggle"
+            class="password-toggle"
+            title="Show/Hide password"
+          >
+            👁️
+          </button>
+        </div>
+        <button onclick="loadNoteForUpdate()" style="background: var(--primary-color); width: 100%;">
+          📖 Load Note for Editing
+        </button>
+        <div id="updateNoteForm" style="display: none; margin-top: 15px;">
+          <hr style="border: none; border-top: 1px solid var(--input-border); margin: 15px 0;">
+          <label style="display: block; font-weight: 600; margin-bottom: 6px; font-size: 13px;">
+            📝 Title (Optional)
           </label>
+          <input id="updateTitle" placeholder="Enter note title" style="margin-bottom: 10px;">
+          <label style="display: block; font-weight: 600; margin-bottom: 6px; font-size: 13px;">
+            📄 Content
+          </label>
+          <textarea id="updateContent" placeholder="Edit your note content here..." rows="8" style="margin-bottom: 10px;"></textarea>
           
-          <!-- Compression Quality Slider -->
-          <div style="margin-bottom: 15px; padding: 12px; background: var(--card-bg); border-radius: 6px;">
-            <label style="display: flex; align-items: center; margin-bottom: 8px; font-size: 13px;">
-              <input type="checkbox" id="updateCompressToggle" checked style="margin-right: 8px; width: 18px; height: 18px; cursor: pointer;" 
-                     onchange="document.getElementById('updateCompressionControls').style.display = this.checked ? 'block' : 'none'">
-              <span style="font-weight: 600;">🗜️ Adjust Compression Quality</span>
+          <!-- Existing Images Management -->
+          <div id="updateImagesManager" style="margin-bottom: 15px;"></div>
+          
+          <!-- Image Upload Section for Update -->
+          <div style="padding: 12px; background: var(--input-bg); border-radius: 6px; border-left: 3px solid var(--primary-color); margin-bottom: 10px;">
+            <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">
+              📷 Add New Images
             </label>
-            <p style="font-size: 11px; margin: 5px 0; opacity: 0.7;">
-              ⚠️ All images are ALWAYS converted to JPEG format
-            </p>
-            <div id="updateCompressionControls">
-              <label style="display: block; font-size: 12px; margin-bottom: 5px; opacity: 0.8;">
-                Quality: <span id="updateQualityValue">80</span>%
+          
+            <!-- Compression Quality Slider -->
+            <div style="margin-bottom: 10px; padding: 10px; background: var(--card-bg); border-radius: 6px;">
+              <label style="display: flex; align-items: center; margin-bottom: 6px; font-size: 12px;">
+                <input type="checkbox" id="updateCompressToggle" checked style="margin-right: 6px; width: 16px; height: 16px; cursor: pointer;" 
+                       onchange="document.getElementById('updateCompressionControls').style.display = this.checked ? 'block' : 'none'">
+                <span style="font-weight: 600;">🗜️ Adjust Quality</span>
               </label>
-              <input type="range" id="updateQualitySlider" min="10" max="100" value="80" 
-                     style="width: 100%; cursor: pointer;" 
-                     oninput="document.getElementById('updateQualityValue').textContent = this.value">
-              <div style="display: flex; justify-content: space-between; font-size: 11px; margin-top: 3px; opacity: 0.6;">
-                <span>Lower size</span>
-                <span>Higher quality</span>
+              <p style="font-size: 10px; margin: 3px 0; opacity: 0.7;">
+                ⚠️ All images → JPEG
+              </p>
+              <div id="updateCompressionControls">
+                <label style="display: block; font-size: 11px; margin-bottom: 3px; opacity: 0.8;">
+                  Quality: <span id="updateQualityValue">80</span>%
+                </label>
+                <input type="range" id="updateQualitySlider" min="10" max="100" value="80" 
+                       style="width: 100%; cursor: pointer;" 
+                       oninput="document.getElementById('updateQualityValue').textContent = this.value">
+                <div style="display: flex; justify-content: space-between; font-size: 10px; margin-top: 2px; opacity: 0.6;">
+                  <span>Small</span>
+                  <span>Quality</span>
+                </div>
               </div>
             </div>
+          
+            <input type="file" id="updateImageUpload" accept="image/*" multiple style="display: none;" onchange="handleUpdateImageUpload(event)">
+            <div style="display: flex; gap: 5px; margin-bottom: 8px;">
+              <button class="image-upload-btn" onclick="document.getElementById('updateImageUpload').click()" style="flex: 1; font-size: 12px; padding: 8px;">
+                📁 Upload
+              </button>
+              <button class="image-upload-btn" onclick="pasteUpdateImage()" style="flex: 1; font-size: 12px; padding: 8px;">
+                📋 Paste
+              </button>
+            </div>
+            <div id="updateImagePreview" class="image-preview-container"></div>
+            <p style="font-size: 11px; margin-top: 6px; opacity: 0.7;">
+              💡 Click image to insert at cursor
+            </p>
           </div>
           
-          <input type="file" id="updateImageUpload" accept="image/*" multiple style="display: none;" onchange="handleUpdateImageUpload(event)">
-          <button class="image-upload-btn" onclick="document.getElementById('updateImageUpload').click()" style="width: 48%; margin-right: 2%;">
-            📁 Upload Images
+          <button onclick="updateNote()" style="background: #FFA500; width: 100%; font-weight: 600;">
+            ✏️ Update & Save
           </button>
-          <button class="image-upload-btn" onclick="pasteUpdateImage()" style="width: 48%;">
-            📋 Paste Image
-          </button>
-          <div id="updateImagePreview" class="image-preview-container"></div>
-          <p style="font-size: 12px; margin-top: 8px; opacity: 0.7;">
-            💡 Click on an image below to insert [IMAGE:index:name] marker at cursor position
-          </p>
         </div>
-        
-        <p style="font-size: 13px; margin-top: 10px; padding: 10px; background: var(--input-bg); border-radius: 6px; border-left: 3px solid var(--primary-color);">
-          ℹ️ <strong>Note:</strong> All existing images will be preserved. You can add new images, delete existing ones, or edit the title and text content.
+        <p id="updateSessionKeyHint" style="display: none; font-size: 12px; margin-top: 8px; color: var(--primary-color); font-weight: 600;">
+          ✨ Session key active
         </p>
-        
-        <button onclick="updateNote()" style="background: #FFA500; margin-top: 15px;">
-          ✏️ Update & Save Changes
-        </button>
+        <div id="updateOutput" style="margin-top: 10px;"></div>
       </div>
-      <p id="updateSessionKeyHint" style="display: none; font-size: 13px; margin-top: 10px; color: var(--primary-color); font-weight: 600;">
-        ✨ Session key is active - password field is optional
-      </p>
-      <div id="updateOutput"></div>
     </div>
 
     <div class="card">
-      <h2>📤 Upload Encrypted Notes</h2>
-      <p class="info">
-        📁 Upload previously downloaded encrypted notes to restore them.
-      </p>
-      <input type="file" id="encryptedFileUpload" accept=".json,application/json" multiple style="display: none;">
-      <button onclick="document.getElementById('encryptedFileUpload').click()" style="width: 100%; margin-bottom: 10px;">
-        📤 Select Encrypted JSON File(s)
-      </button>
-      <div id="uploadStatus" style="font-size: 13px; padding: 10px; background: var(--input-bg); border-radius: 6px; border-left: 3px solid var(--primary-color); display: none; margin-bottom: 10px;">
+      <div onclick="toggleSection('uploadNotesSection')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+        <h2 style="margin: 0;">📤 Upload Encrypted Notes</h2>
+        <span id="uploadNotesSectionToggle" style="font-size: 24px; transition: transform 0.3s;">▼</span>
       </div>
-      <p style="font-size: 12px; color: var(--text-color); opacity: 0.7; margin-top: 10px;">
-        💡 You can select multiple files at once. Files must be valid encrypted note JSON files.
-      </p>
+      <div id="uploadNotesSection" style="display: none; margin-top: 15px;">
+        <p style="font-size: 13px; opacity: 0.8; margin-bottom: 15px;">
+          📁 Restore previously downloaded notes.
+        </p>
+        <input type="file" id="encryptedFileUpload" accept=".json,application/json" multiple style="display: none;">
+        <button onclick="document.getElementById('encryptedFileUpload').click()" style="width: 100%;">
+          📤 Select JSON File(s)
+        </button>
+        <div id="uploadStatus" style="font-size: 12px; padding: 8px; background: var(--input-bg); border-radius: 6px; border-left: 3px solid var(--primary-color); display: none; margin-top: 10px;">
+        </div>
+        <p style="font-size: 11px; opacity: 0.7; margin-top: 8px;">
+          💡 Select multiple files at once<br>
+          <span style="font-size: 10px;">ℹ️ Browser console may show 404 errors - this is normal (checking for duplicates)</span>
+        </p>
+      </div>
     </div>
 
     <div class="card">

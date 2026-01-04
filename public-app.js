@@ -106,6 +106,24 @@ function togglePasswordVisibility(inputId, toggleId) {
 }
 
 /**
+ * Toggle collapsible sections
+ */
+function toggleSection(sectionId) {
+  const section = document.getElementById(sectionId);
+  const toggle = document.getElementById(sectionId + 'Toggle');
+  
+  if (section.style.display === 'none') {
+    section.style.display = 'block';
+    toggle.textContent = '▲';
+    toggle.style.transform = 'rotate(180deg)';
+  } else {
+    section.style.display = 'none';
+    toggle.textContent = '▼';
+    toggle.style.transform = 'rotate(0deg)';
+  }
+}
+
+/**
  * Handle image file selection
  */
 document.addEventListener('DOMContentLoaded', () => {
@@ -702,38 +720,42 @@ function deleteUpdateImage(imageIndex) {
 function renderUpdateImages() {
   const formDiv = document.getElementById('updateNoteForm');
   const parsed = JSON.parse(formDiv.dataset.parsedData);
-  const imageManager = document.getElementById('updateImageManager');
+  const imageManager = document.getElementById('updateImagesManager');
   
   if (!imageManager) return;
   
   const allImages = [...parsed.inlineImages, ...parsed.images.map(img => ({...img, placeholder: null}))];
   
   if (allImages.length === 0) {
-    imageManager.innerHTML = '<div style="padding: 20px; text-align: center; opacity: 0.7;">All images removed</div>';
+    imageManager.innerHTML = '';
     return;
   }
   
-  let imagesHTML = '<strong>📷 Manage Images:</strong><br>';
-  imagesHTML += '<p style="font-size: 12px; margin: 5px 0 10px 0; opacity: 0.8;">Click ❌ to delete an image</p>';
+  let imagesHTML = '<div style="margin-bottom: 10px; padding: 10px; background: var(--input-bg); border-radius: 6px; border-left: 3px solid #FFA500;">';
+  imagesHTML += '<strong style="font-size: 13px;">📷 Existing Images</strong>';
+  imagesHTML += '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px; margin-top: 10px;">';
   
   allImages.forEach((img, idx) => {
     const isInline = img.placeholder !== null && img.placeholder !== undefined;
-    const imageType = isInline ? 'Inline' : 'Additional';
+    const imageType = isInline ? '📍 Inline' : '📎 Additional';
+    const truncatedName = img.name.length > 25 ? img.name.substring(0, 22) + '...' : img.name;
+    const sizeKB = (img.data.length / 1024).toFixed(1);
+    
     imagesHTML += `
-      <div class="image-item" data-index="${idx}" style="display: flex; align-items: center; gap: 10px; margin: 10px 0; padding: 10px; background: var(--card-bg); border-radius: 6px; border: 1px solid var(--input-border);">
-        <img src="${img.data}" alt="${img.name}" style="max-width: 80px; max-height: 80px; border-radius: 4px; object-fit: cover;">
-        <div style="flex: 1;">
-          <div style="font-size: 13px; font-weight: 600;">${escapeHtml(img.name)}</div>
-          <div style="font-size: 11px; opacity: 0.7;">Type: ${imageType}</div>
-          <div style="font-size: 11px; opacity: 0.7;">Size: ${(img.data.length / 1024).toFixed(1)} KB</div>
+      <div class="image-item" data-index="${idx}" style="display: flex; align-items: center; gap: 8px; padding: 8px; background: var(--card-bg); border-radius: 6px; border: 1px solid var(--input-border); position: relative;">
+        <img src="${img.data}" alt="${img.name}" title="${img.name}" style="width: 60px; height: 60px; border-radius: 4px; object-fit: cover; flex-shrink: 0;">
+        <div style="flex: 1; min-width: 0; overflow: hidden;">
+          <div style="font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${img.name}">${escapeHtml(truncatedName)}</div>
+          <div style="font-size: 10px; opacity: 0.7; margin-top: 2px;">${imageType} • ${sizeKB} KB</div>
         </div>
-        <button onclick="deleteUpdateImage(${idx})" style="background: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 16px;" title="Delete this image">
-          ❌
+        <button onclick="deleteUpdateImage(${idx})" style="background: transparent; color: #dc3545; border: none; padding: 4px; cursor: pointer; font-size: 18px; line-height: 1; opacity: 0.7; transition: opacity 0.2s; flex-shrink: 0;" title="Delete" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
+          🗑️
         </button>
       </div>
     `;
   });
   
+  imagesHTML += '</div></div>';
   imageManager.innerHTML = imagesHTML;
 }
 
@@ -1458,6 +1480,10 @@ async function uploadEncryptedNotes(files) {
           if (checkRes.ok) {
             duplicateCount++;
             continue; // Skip duplicate
+          }
+          // 404 is expected for new notes, other errors should be checked
+          if (checkRes.status !== 404 && !checkRes.ok) {
+            throw new Error('Failed to check existing note');
           }
           
           // Upload note
