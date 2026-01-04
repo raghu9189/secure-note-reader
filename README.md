@@ -14,6 +14,7 @@ A **zero-knowledge encrypted note-sharing application** built with Node.js and v
 - ✅ **PBKDF2 key derivation** - 100,000 iterations for password hardening
 - ✅ **Random IV and salt** - Each note has unique encryption parameters
 - ✅ **No external dependencies** - Uses native Node.js and Web Crypto API
+- ✅ **📷 Image encryption** - Upload/paste images that get encrypted with your text!
 
 ## 📁 Project Structure
 
@@ -53,16 +54,23 @@ That's it! The server serves both the frontend and API endpoints.
 ### Creating a Note
 
 1. Write your secret message in the text area
-2. Enter a strong password (min 8 characters)
-3. Click "Encrypt & Save"
-4. Copy the Note ID - you'll need it to read the note!
+2. **📷 (Optional) Add images:**
+   - Click "Upload Images" to select image files
+   - Or click "Paste from Clipboard" to paste a copied image
+   - Preview your images before encrypting
+   - Remove any image by clicking the × button
+3. Enter a strong password (min 8 characters)
+4. Click "Encrypt & Save"
+5. Copy the Note ID - you'll need it to read the note!
+
+**Note:** Images are converted to base64 and encrypted along with your text!
 
 ### Reading a Note
 
 1. Paste the Note ID
 2. Enter the correct password
 3. Click "Decrypt & Read"
-4. If the password is correct, you'll see the decrypted note
+4. If the password is correct, you'll see the decrypted note with all images!
 
 ## 🔐 How It Works
 
@@ -83,11 +91,12 @@ Browser decrypts with password → Display plaintext note
 
 ### Technical Details
 
-- **Algorithm**: AES-256-GCM (Authenticated Encryption)
+- **Algorithm**: AES-256-CBC (Cipher Block Chaining)
 - **Key Derivation**: PBKDF2 with SHA-256 (100,000 iterations)
-- **IV**: 12 bytes (96 bits) random for each note
+- **IV**: 16 bytes (128 bits) random for each note
 - **Salt**: 16 bytes (128 bits) random for each note
 - **Encoding**: Base64 for storage/transmission
+- **Images**: Converted to base64 data URLs and embedded in encrypted content
 
 ## 🛠️ API Endpoints
 

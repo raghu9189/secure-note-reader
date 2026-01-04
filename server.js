@@ -152,6 +152,23 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // GET /notes - Get all notes (without encrypted content, just metadata)
+  if (req.method === 'GET' && urlParts[0] === 'notes' && urlParts.length === 1) {
+    const notes = readDB();
+    // Return metadata with calculated size
+    const notesList = notes.map(note => {
+      // Calculate approximate size of encrypted content
+      const size = note.cipherText.length + note.iv.length + note.salt.length;
+      return {
+        id: note.id,
+        createdAt: note.createdAt,
+        size: size // size in bytes (base64 encoded)
+      };
+    });
+    sendJSON(res, 200, notesList);
+    return;
+  }
+
   // 404 - Route not found
   sendJSON(res, 404, { error: 'Route not found' });
 });
