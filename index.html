@@ -357,13 +357,15 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      min-width: 0; /* Allow flex item to shrink */
     }
 
     .note-item-date {
       font-size: 12px;
       color: var(--text-color);
       opacity: 0.7;
-      white-space: nowrap;
+      white-space: normal; /* Allow wrapping on mobile */
+      line-height: 1.4;
     }
 
     .note-item-actions {
@@ -530,15 +532,21 @@
 
       h1 {
         font-size: 1.8em;
-        margin-top: 40px;
+        margin-top: 50px;
         margin-bottom: 20px;
       }
 
       .theme-toggle {
-        top: 5px;
-        right: 5px;
-        padding: 8px 16px;
-        font-size: 1em;
+        top: 10px;
+        right: 10px;
+        padding: 10px 18px;
+        font-size: 1.1em;
+        border-radius: 25px;
+        min-width: 44px;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
 
       .card {
@@ -615,6 +623,53 @@
         font-size: 14px;
         padding: 12px;
       }
+
+      /* Mobile notes list improvements */
+      .notes-header {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 10px;
+      }
+
+      .notes-header p {
+        font-size: 13px !important;
+        text-align: center;
+      }
+
+      .notes-header button {
+        width: 100%;
+      }
+
+      .note-item {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 12px;
+        gap: 8px;
+      }
+
+      .note-item-id {
+        font-size: 13px;
+        max-width: 100%;
+        word-break: break-all;
+      }
+
+      .note-item-date {
+        font-size: 11px;
+        width: 100%;
+        white-space: normal;
+      }
+
+      .note-item-actions {
+        width: 100%;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      .note-item-btn {
+        font-size: 14px;
+        padding: 8px 12px;
+        min-width: 44px;
+      }
     }
 
     /* Extra small devices (phones in portrait) */
@@ -634,6 +689,34 @@
       .decrypted-content {
         font-size: 14px;
         padding: 15px;
+      }
+
+      .note-item {
+        padding: 10px;
+      }
+
+      .note-item-id {
+        font-size: 12px;
+      }
+
+      .note-item-date {
+        font-size: 10px;
+      }
+
+      .note-item-btn {
+        font-size: 16px;
+        padding: 10px 14px;
+        flex: 1;
+      }
+
+      .note-item-actions {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 5px;
+      }
+
+      #notesList {
+        max-height: 250px !important;
       }
 
       .image-upload-btn {
@@ -752,6 +835,9 @@
         <p style="font-size: 13px; margin-top: 10px; padding: 10px; background: var(--input-bg); border-radius: 6px; border-left: 3px solid var(--primary-color);">
           💡 <strong>Tip:</strong> Place cursor in text where you want an image, then click "Insert Here" button on the image preview.
         </p>
+        <p style="font-size: 12px; margin-top: 8px; padding: 8px; background: var(--input-bg); border-radius: 6px; color: var(--text-color); opacity: 0.7;">
+          📸 <strong>Supported formats:</strong> PNG, JPEG, JPG, WebP, HEIC/HEIF, TIFF, AVIF, and more. All images are automatically converted to JPEG for optimal compression and faster encryption.
+        </p>
       </div>
 
       <div style="position: relative;">
@@ -794,12 +880,28 @@
     </div>
 
     <div class="card">
-      <h2>📋 All Saved Notes</h2>
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-        <p style="font-size: 14px; margin: 0; opacity: 0.8;">
+      <h2>� Upload Encrypted Notes</h2>
+      <p class="info">
+        📁 Upload previously downloaded encrypted notes to restore them.
+      </p>
+      <input type="file" id="encryptedFileUpload" accept=".json,application/json" multiple style="display: none;">
+      <button onclick="document.getElementById('encryptedFileUpload').click()" style="width: 100%; margin-bottom: 10px;">
+        📤 Select Encrypted JSON File(s)
+      </button>
+      <div id="uploadStatus" style="font-size: 13px; padding: 10px; background: var(--input-bg); border-radius: 6px; border-left: 3px solid var(--primary-color); display: none; margin-bottom: 10px;">
+      </div>
+      <p style="font-size: 12px; color: var(--text-color); opacity: 0.7; margin-top: 10px;">
+        💡 You can select multiple files at once. Files must be valid encrypted note JSON files.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>�📋 All Saved Notes</h2>
+      <div class="notes-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 10px; flex-wrap: wrap;">
+        <p style="font-size: 14px; margin: 0; opacity: 0.8; flex: 1; min-width: 150px;">
           Click on any note to view or download
         </p>
-        <button onclick="downloadAllNotes()" style="font-size: 13px; padding: 8px 16px;">
+        <button onclick="downloadAllNotes()" style="font-size: 13px; padding: 8px 16px; white-space: nowrap;">
           💾 Download All
         </button>
       </div>
@@ -833,10 +935,11 @@
       localStorage.setItem('theme', isDark ? 'dark' : 'light');
     }
 
-    // Load saved theme on page load
+    // Load saved theme on page load (default to dark mode)
     document.addEventListener('DOMContentLoaded', () => {
       const savedTheme = localStorage.getItem('theme');
-      if (savedTheme === 'dark') {
+      // Default to dark mode if no saved preference
+      if (savedTheme === 'dark' || !savedTheme) {
         document.body.classList.add('dark-mode');
       }
     });

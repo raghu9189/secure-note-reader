@@ -135,10 +135,14 @@ function compressImage(base64Data, quality = 0.8) {
       canvas.width = img.width;
       canvas.height = img.height;
       
+      // Fill white background (for transparent images)
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
       // Draw image on canvas
       ctx.drawImage(img, 0, 0);
       
-      // Convert to compressed base64
+      // Always convert to JPEG with compression
       const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
       
       resolve(compressedBase64);
@@ -183,15 +187,13 @@ async function handleImageUpload(event) {
         let base64 = await fileToBase64(file);
         const originalSize = getBase64Size(base64);
         
-        // Compress if enabled
-        if (shouldCompress) {
-          const compressedBase64 = await compressImage(base64, quality);
-          const compressedSize = getBase64Size(compressedBase64);
-          const savings = ((1 - compressedSize / originalSize) * 100).toFixed(1);
-          
-          console.log(`📊 ${file.name}: ${(originalSize / 1024).toFixed(1)}KB → ${(compressedSize / 1024).toFixed(1)}KB (${savings}% smaller)`);
-          base64 = compressedBase64;
-        }
+        // Always compress and convert to JPEG
+        const compressedBase64 = await compressImage(base64, shouldCompress ? quality : 0.95);
+        const compressedSize = getBase64Size(compressedBase64);
+        const savings = ((1 - compressedSize / originalSize) * 100).toFixed(1);
+        
+        console.log(`📊 ${file.name}: ${(originalSize / 1024).toFixed(1)}KB → ${(compressedSize / 1024).toFixed(1)}KB (${savings}% smaller) [Converted to JPEG]`);
+        base64 = compressedBase64;
         
         // Check file size after compression (warn if > 5MB)
         const finalSize = getBase64Size(base64);
@@ -229,16 +231,14 @@ async function pasteImage() {
           const blob = await item.getType(type);
           let base64 = await fileToBase64(blob);
           
-          // Compress if enabled
-          if (shouldCompress) {
-            const originalSize = getBase64Size(base64);
-            const compressedBase64 = await compressImage(base64, quality);
-            const compressedSize = getBase64Size(compressedBase64);
-            const savings = ((1 - compressedSize / originalSize) * 100).toFixed(1);
-            
-            console.log(`📊 Pasted image: ${(originalSize / 1024).toFixed(1)}KB → ${(compressedSize / 1024).toFixed(1)}KB (${savings}% smaller)`);
-            base64 = compressedBase64;
-          }
+          // Always compress and convert to JPEG
+          const originalSize = getBase64Size(base64);
+          const compressedBase64 = await compressImage(base64, shouldCompress ? quality : 0.95);
+          const compressedSize = getBase64Size(compressedBase64);
+          const savings = ((1 - compressedSize / originalSize) * 100).toFixed(1);
+          
+          console.log(`📊 Pasted image: ${(originalSize / 1024).toFixed(1)}KB → ${(compressedSize / 1024).toFixed(1)}KB (${savings}% smaller) [Converted to JPEG]`);
+          base64 = compressedBase64;
           
           uploadedImages.push({
             name: 'pasted-image-' + Date.now() + '.jpg',
@@ -666,6 +666,7 @@ async function loadNotesList() {
             <button class="note-item-btn" onclick="copyToClipboard('${note.id}')" title="Copy ID">📋</button>
             <button class="note-item-btn" onclick="fillNoteId('${note.id}')" title="Load to read">📖</button>
             <button class="note-item-btn" onclick="downloadNote('${note.id}', event)" title="Download encrypted note">💾</button>
+            <button class="note-item-btn" onclick="deleteNote('${note.id}', event)" title="Delete note" style="color: var(--error-text);">🗑️</button>
           </div>
         </div>
       `;
@@ -743,6 +744,111 @@ async function downloadNote(noteId, event) {
 }
 
 /**
+ * Delete a note with password verification
+ */
+async function deleteNote(noteId, event) {
+  try {
+    // Get password from user or use global session key
+    let password = globalSessionKey;
+    
+    if (!password) {
+      password = prompt(`🔐 Enter the password to delete note ${noteId}:\n\n⚠️ This will permanently delete the note if the password is correct.`);
+      
+      if (!password) {
+        return; // User cancelled
+      }
+    } else {
+      // Confirm deletion when using session key
+      const confirmDelete = confirm(`⚠️ Are you sure you want to permanently delete note ${noteId}?\n\nThis action cannot be undone!`);
+      if (!confirmDelete) {
+        return;
+      }
+    }
+    
+    // Fetch the note to verify password
+    const fetchRes = await fetch(`${API_BASE}/note/${noteId}`);
+    if (!fetchRes.ok) {
+      throw new Error('Note not found');
+    }
+    
+    const noteData = await fetchRes.json();
+    
+    // Try to decrypt the note to verify password is correct
+    try {
+      const ivArray = base64ToUint8Array(noteData.iv);
+      const saltArray = base64ToUint8Array(noteData.salt);
+      const cipherArray = base64ToUint8Array(noteData.cipherText);
+      
+      // Derive key from password
+      const keyMaterial = await window.crypto.subtle.importKey(
+        'raw',
+        new TextEncoder().encode(password),
+        { name: 'PBKDF2' },
+        false,
+        ['deriveBits', 'deriveKey']
+      );
+      
+      const key = await window.crypto.subtle.deriveKey(
+        {
+          name: 'PBKDF2',
+          salt: saltArray,
+          iterations: 100000,
+          hash: 'SHA-256'
+        },
+        keyMaterial,
+        { name: 'AES-CBC', length: 256 },
+        false,
+        ['decrypt']
+      );
+      
+      // Try to decrypt - this will fail if password is wrong
+      await window.crypto.subtle.decrypt(
+        { name: 'AES-CBC', iv: ivArray },
+        key,
+        cipherArray
+      );
+      
+      // Password is correct, proceed with deletion
+      const deleteRes = await fetch(`${API_BASE}/note/${noteId}`, {
+        method: 'DELETE'
+      });
+      
+      if (!deleteRes.ok) {
+        throw new Error('Failed to delete note');
+      }
+      
+      const result = await deleteRes.json();
+      
+      // Visual feedback
+      if (event && event.target) {
+        const btn = event.target;
+        btn.textContent = '✅';
+        btn.style.color = 'var(--success-text)';
+      }
+      
+      // Reload the notes list after a brief delay
+      setTimeout(() => {
+        loadNotesList();
+      }, 500);
+      
+      // Show success message
+      alert('✅ Note deleted successfully!');
+      console.log('Note deleted:', result.message);
+      
+    } catch (decryptError) {
+      // Decryption failed - wrong password
+      alert('❌ Incorrect password! Note was not deleted.');
+      console.error('Password verification failed:', decryptError);
+      return;
+    }
+    
+  } catch (error) {
+    alert('Failed to delete note: ' + error.message);
+    console.error('Delete error:', error);
+  }
+}
+
+/**
  * Download all encrypted notes as a single JSON file
  */
 async function downloadAllNotes() {
@@ -781,6 +887,127 @@ async function downloadAllNotes() {
   }
 }
 
+/**
+ * Upload encrypted note files
+ */
+async function uploadEncryptedNotes(files) {
+  const statusDiv = document.getElementById('uploadStatus');
+  statusDiv.style.display = 'block';
+  statusDiv.style.borderColor = 'var(--primary-color)';
+  statusDiv.innerHTML = '⏳ Processing files...';
+  
+  let successCount = 0;
+  let errorCount = 0;
+  let duplicateCount = 0;
+  const errors = [];
+  
+  try {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      
+      try {
+        // Read file content
+        const content = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = reject;
+          reader.readAsText(file);
+        });
+        
+        // Parse JSON
+        let noteData;
+        try {
+          noteData = JSON.parse(content);
+        } catch (parseError) {
+          throw new Error('Invalid JSON format');
+        }
+        
+        // Check if it's an array (bulk upload) or single note
+        const notesToUpload = Array.isArray(noteData) ? noteData : [noteData];
+        
+        // Validate and upload each note
+        for (const note of notesToUpload) {
+          // Validate note structure
+          if (!note.id || !note.cipherText || !note.iv || !note.salt) {
+            throw new Error('Missing required fields (id, cipherText, iv, salt)');
+          }
+          
+          // Check if note already exists
+          const checkRes = await fetch(`${API_BASE}/note/${note.id}`);
+          if (checkRes.ok) {
+            duplicateCount++;
+            continue; // Skip duplicate
+          }
+          
+          // Upload note
+          const uploadRes = await fetch(`${API_BASE}/note`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              id: note.id,
+              cipherText: note.cipherText,
+              iv: note.iv,
+              salt: note.salt,
+              createdAt: note.createdAt || new Date().toISOString()
+            })
+          });
+          
+          if (!uploadRes.ok) {
+            throw new Error('Failed to upload note to server');
+          }
+          
+          successCount++;
+        }
+        
+      } catch (error) {
+        errorCount++;
+        errors.push(`${file.name}: ${error.message}`);
+      }
+    }
+    
+    // Show results
+    let message = '';
+    if (successCount > 0) {
+      message += `✅ Successfully uploaded ${successCount} note(s).<br>`;
+    }
+    if (duplicateCount > 0) {
+      message += `⚠️ Skipped ${duplicateCount} duplicate note(s).<br>`;
+    }
+    if (errorCount > 0) {
+      message += `❌ Failed to upload ${errorCount} file(s).<br>`;
+      if (errors.length > 0 && errors.length <= 3) {
+        message += `<div style="font-size: 11px; margin-top: 5px; opacity: 0.8;">${errors.join('<br>')}</div>`;
+      }
+    }
+    
+    if (successCount > 0) {
+      statusDiv.style.borderColor = 'var(--success-text)';
+      // Reload notes list
+      setTimeout(() => {
+        loadNotesList();
+      }, 500);
+    } else if (duplicateCount > 0 && errorCount === 0) {
+      statusDiv.style.borderColor = '#FFA500';
+    } else {
+      statusDiv.style.borderColor = 'var(--error-text)';
+    }
+    
+    statusDiv.innerHTML = message;
+    
+    // Auto-hide after delay
+    setTimeout(() => {
+      statusDiv.style.display = 'none';
+    }, 5000);
+    
+  } catch (error) {
+    statusDiv.style.borderColor = 'var(--error-text)';
+    statusDiv.innerHTML = `❌ Upload failed: ${error.message}`;
+    console.error('Upload error:', error);
+  }
+}
+
 // Add keyboard shortcuts
 document.addEventListener('DOMContentLoaded', () => {
   // Enter to submit in password fields
@@ -790,6 +1017,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('readPassword').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') readNote();
+  });
+  
+  // Handle encrypted file upload
+  document.getElementById('encryptedFileUpload').addEventListener('change', (e) => {
+    const files = e.target.files;
+    if (files.length > 0) {
+      uploadEncryptedNotes(files);
+    }
+    // Reset input to allow re-uploading same file
+    e.target.value = '';
   });
   
   // Load notes list on page load
