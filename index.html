@@ -227,6 +227,34 @@
       accent-color: #667eea;
     }
 
+    /* Password Toggle Button Styling */
+    .password-toggle {
+      position: absolute;
+      right: 5px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      padding: 5px 8px;
+      color: var(--text-color);
+      opacity: 0.6;
+      transition: opacity 0.2s;
+      z-index: 10;
+      pointer-events: auto;
+      line-height: 1;
+      min-width: auto;
+      width: auto;
+      height: auto;
+    }
+
+    .password-toggle:hover {
+      opacity: 1;
+      transform: translateY(-50%) scale(1.1);
+      box-shadow: none;
+    }
+
     #output {
       background: var(--output-bg);
       padding: 20px;
@@ -660,10 +688,8 @@
           <button 
             onclick="toggleSessionKeyVisibility()" 
             id="sessionKeyToggle"
-            style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; font-size: 18px; padding: 5px 8px; color: var(--text-color); opacity: 0.6; transition: opacity 0.2s;"
+            class="password-toggle"
             title="Show/Hide password"
-            onmouseover="this.style.opacity='1'" 
-            onmouseout="this.style.opacity='0.6'"
           >
             👁️
           </button>
@@ -733,10 +759,8 @@
         <button 
           onclick="togglePasswordVisibility('password', 'passwordToggle')" 
           id="passwordToggle"
-          style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; font-size: 18px; padding: 5px 8px; color: var(--text-color); opacity: 0.6; transition: opacity 0.2s;"
+          class="password-toggle"
           title="Show/Hide password"
-          onmouseover="this.style.opacity='1'" 
-          onmouseout="this.style.opacity='0.6'"
         >
           👁️
         </button>
@@ -756,10 +780,8 @@
         <button 
           onclick="togglePasswordVisibility('readPassword', 'readPasswordToggle')" 
           id="readPasswordToggle"
-          style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; font-size: 18px; padding: 5px 8px; color: var(--text-color); opacity: 0.6; transition: opacity 0.2s;"
+          class="password-toggle"
           title="Show/Hide password"
-          onmouseover="this.style.opacity='1'" 
-          onmouseout="this.style.opacity='0.6'"
         >
           👁️
         </button>
