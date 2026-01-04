@@ -562,6 +562,10 @@ async function loadNoteForUpdate() {
   const outputDiv = document.getElementById('updateOutput');
   const formDiv = document.getElementById('updateNoteForm');
   
+  // Clear previous new images
+  updateNewImages = [];
+  document.getElementById('updateImagePreview').innerHTML = '';
+  
   if (!noteId) {
     outputDiv.innerHTML = '<div class="error">❌ Please enter a Note ID</div>';
     return;
@@ -733,6 +737,158 @@ function renderUpdateImages() {
   imageManager.innerHTML = imagesHTML;
 }
 
+// Store new images for update
+let updateNewImages = [];
+
+/**
+ * Handle image upload for update note
+ */
+async function handleUpdateImageUpload(event) {
+  const files = event.target.files;
+  const shouldCompress = document.getElementById('updateCompressToggle').checked;
+  const quality = document.getElementById('updateQualitySlider').value / 100;
+  
+  for (let file of files) {
+    if (file.type.startsWith('image/')) {
+      try {
+        let base64 = await fileToBase64(file);
+        const originalSize = getBase64Size(base64);
+        
+        // ALWAYS compress and convert to JPEG (strict rule for all formats)
+        const compressedBase64 = await compressImage(base64, shouldCompress ? quality : 0.92);
+        const compressedSize = getBase64Size(compressedBase64);
+        const savings = ((1 - compressedSize / originalSize) * 100).toFixed(1);
+        
+        if (shouldCompress) {
+          console.log(`📊 ${file.name}: ${(originalSize / 1024).toFixed(1)}KB → ${(compressedSize / 1024).toFixed(1)}KB (${savings}% smaller) [Converted to JPEG @ ${(quality * 100).toFixed(0)}%]`);
+        } else {
+          console.log(`📊 ${file.name}: ${(originalSize / 1024).toFixed(1)}KB → ${(compressedSize / 1024).toFixed(1)}KB (${savings}% smaller) [Converted to JPEG @ 92%]`);
+        }
+        base64 = compressedBase64;
+        
+        updateNewImages.push({
+          name: file.name,
+          data: base64
+        });
+        displayUpdateImagePreview();
+      } catch (error) {
+        console.error('Error uploading image:', error);
+        alert('Failed to upload image: ' + file.name);
+      }
+    }
+  }
+  event.target.value = ''; // Reset input
+}
+
+/**
+ * Paste image from clipboard for update
+ */
+async function pasteUpdateImage() {
+  try {
+    const shouldCompress = document.getElementById('updateCompressToggle').checked;
+    const quality = document.getElementById('updateQualitySlider').value / 100;
+    
+    const clipboardItems = await navigator.clipboard.read();
+    for (const item of clipboardItems) {
+      for (const type of item.types) {
+        if (type.startsWith('image/')) {
+          const blob = await item.getType(type);
+          let base64 = await fileToBase64(blob);
+          
+          const originalSize = getBase64Size(base64);
+          
+          // ALWAYS compress and convert to JPEG (strict rule for all formats)
+          const compressedBase64 = await compressImage(base64, shouldCompress ? quality : 0.92);
+          const compressedSize = getBase64Size(compressedBase64);
+          const savings = ((1 - compressedSize / originalSize) * 100).toFixed(1);
+          
+          if (shouldCompress) {
+            console.log(`📊 Pasted image: ${(originalSize / 1024).toFixed(1)}KB → ${(compressedSize / 1024).toFixed(1)}KB (${savings}% smaller) [Converted to JPEG @ ${(quality * 100).toFixed(0)}%]`);
+          } else {
+            console.log(`📊 Pasted image: ${(originalSize / 1024).toFixed(1)}KB → ${(compressedSize / 1024).toFixed(1)}KB (${savings}% smaller) [Converted to JPEG @ 92%]`);
+          }
+          base64 = compressedBase64;
+          
+          updateNewImages.push({
+            name: 'pasted-image-' + Date.now() + '.jpg',
+            data: base64
+          });
+          displayUpdateImagePreview();
+          return;
+        }
+      }
+    }
+    alert('No image found in clipboard');
+  } catch (error) {
+    console.error('Paste error:', error);
+    alert('Failed to paste image. Try using Ctrl+V or Cmd+V.');
+  }
+}
+
+/**
+ * Display preview of new images for update
+ */
+function displayUpdateImagePreview() {
+  const previewContainer = document.getElementById('updateImagePreview');
+  
+  if (updateNewImages.length === 0) {
+    previewContainer.innerHTML = '';
+    return;
+  }
+  
+  // Get base index for new images (after existing images)
+  const formDiv = document.getElementById('updateNoteForm');
+  const parsed = formDiv.dataset.parsedData ? JSON.parse(formDiv.dataset.parsedData) : {images: [], inlineImages: []};
+  const baseIndex = parsed.images.length + parsed.inlineImages.length;
+  
+  let html = '<div style="margin-top: 10px;">';
+  updateNewImages.forEach((img, idx) => {
+    const globalIdx = baseIndex + idx;
+    html += `
+      <div style="display: inline-block; margin: 5px; position: relative; border: 2px solid var(--primary-color); border-radius: 8px; padding: 5px; cursor: pointer;" 
+           onclick="insertUpdateImageMarker(${globalIdx}, '${img.name.replace(/'/g, "\\'")}')" 
+           title="Click to insert at cursor position">
+        <img src="${img.data}" alt="${img.name}" style="max-width: 100px; max-height: 100px; display: block; border-radius: 4px;">
+        <button onclick="event.stopPropagation(); removeUpdateNewImage(${idx})" style="position: absolute; top: 0; right: 0; background: #dc3545; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 14px; line-height: 1;" title="Remove">
+          ×
+        </button>
+        <div style="font-size: 10px; margin-top: 3px; text-align: center; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          ${img.name}
+        </div>
+      </div>
+    `;
+  });
+  html += '</div>';
+  
+  previewContainer.innerHTML = html;
+}
+
+/**
+ * Insert image marker for new update image at cursor position
+ */
+function insertUpdateImageMarker(index, name) {
+  const textarea = document.getElementById('updateContent');
+  const marker = `[IMAGE:${index}:${name}]`;
+  
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const text = textarea.value;
+  
+  textarea.value = text.substring(0, start) + marker + text.substring(end);
+  
+  // Move cursor after marker
+  textarea.selectionStart = textarea.selectionEnd = start + marker.length;
+  textarea.focus();
+}
+
+/**
+ * Remove a new image from update preview
+ */
+function removeUpdateNewImage(index) {
+  updateNewImages.splice(index, 1);
+  displayUpdateImagePreview();
+}
+
 /**
  * Update existing note
  */
@@ -806,10 +962,33 @@ async function updateNote() {
       fullContent = fullContent.replace(/__INLINE_IMAGE_\d+__/g, '');
     }
     
-    // Append the old format images to the end of content (not inline)
-    if (originalParsed.images.length > 0) {
+    // Process new images - check if they have inline markers [IMAGE:index:name]
+    const newInlineImages = [];
+    const newAdditionalImages = [];
+    
+    updateNewImages.forEach((img, idx) => {
+      const baseIndex = originalParsed.images.length + originalParsed.inlineImages.length;
+      const globalIdx = baseIndex + idx;
+      const marker = `[IMAGE:${globalIdx}:${img.name}]`;
+      
+      if (fullContent.includes(marker)) {
+        // This is an inline image
+        newInlineImages.push(img);
+        const inlineMarker = `[INLINE_IMG:${img.name}]${img.data}[/INLINE_IMG]`;
+        fullContent = fullContent.replace(marker, inlineMarker);
+      } else {
+        // This is an additional image (not positioned inline)
+        newAdditionalImages.push(img);
+      }
+    });
+    
+    // Combine existing additional images with new additional images
+    const allAdditionalImages = [...originalParsed.images, ...newAdditionalImages];
+    
+    // Append all additional (non-inline) images to the end of content
+    if (allAdditionalImages.length > 0) {
       fullContent += '\n\n[ENCRYPTED_IMAGES_START]';
-      originalParsed.images.forEach(img => {
+      allAdditionalImages.forEach(img => {
         fullContent += `\n[IMG:${img.name}]${img.data}[/IMG]`;
       });
       fullContent += '\n[ENCRYPTED_IMAGES_END]';
@@ -858,6 +1037,8 @@ async function updateNote() {
     document.getElementById('updatePassword').value = '';
     document.getElementById('updateTitle').value = '';
     document.getElementById('updateContent').value = '';
+    document.getElementById('updateImagePreview').innerHTML = ''; // Clear preview
+    updateNewImages = []; // Clear new images array
     delete formDiv.dataset.parsedData; // Clear stored data
     
     // Reload notes list

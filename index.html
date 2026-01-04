@@ -910,8 +910,51 @@
         </label>
         <textarea id="updateContent" placeholder="Edit your note content here..." rows="8"></textarea>
         
+        <!-- Image Upload Section for Update -->
+        <div style="margin-top: 15px; padding: 15px; background: var(--input-bg); border-radius: 6px; border-left: 3px solid var(--primary-color);">
+          <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px;">
+            📷 Add New Images
+          </label>
+          
+          <!-- Compression Quality Slider -->
+          <div style="margin-bottom: 15px; padding: 12px; background: var(--card-bg); border-radius: 6px;">
+            <label style="display: flex; align-items: center; margin-bottom: 8px; font-size: 13px;">
+              <input type="checkbox" id="updateCompressToggle" checked style="margin-right: 8px; width: 18px; height: 18px; cursor: pointer;" 
+                     onchange="document.getElementById('updateCompressionControls').style.display = this.checked ? 'block' : 'none'">
+              <span style="font-weight: 600;">🗜️ Adjust Compression Quality</span>
+            </label>
+            <p style="font-size: 11px; margin: 5px 0; opacity: 0.7;">
+              ⚠️ All images are ALWAYS converted to JPEG format
+            </p>
+            <div id="updateCompressionControls">
+              <label style="display: block; font-size: 12px; margin-bottom: 5px; opacity: 0.8;">
+                Quality: <span id="updateQualityValue">80</span>%
+              </label>
+              <input type="range" id="updateQualitySlider" min="10" max="100" value="80" 
+                     style="width: 100%; cursor: pointer;" 
+                     oninput="document.getElementById('updateQualityValue').textContent = this.value">
+              <div style="display: flex; justify-content: space-between; font-size: 11px; margin-top: 3px; opacity: 0.6;">
+                <span>Lower size</span>
+                <span>Higher quality</span>
+              </div>
+            </div>
+          </div>
+          
+          <input type="file" id="updateImageUpload" accept="image/*" multiple style="display: none;" onchange="handleUpdateImageUpload(event)">
+          <button class="image-upload-btn" onclick="document.getElementById('updateImageUpload').click()" style="width: 48%; margin-right: 2%;">
+            📁 Upload Images
+          </button>
+          <button class="image-upload-btn" onclick="pasteUpdateImage()" style="width: 48%;">
+            📋 Paste Image
+          </button>
+          <div id="updateImagePreview" class="image-preview-container"></div>
+          <p style="font-size: 12px; margin-top: 8px; opacity: 0.7;">
+            💡 Click on an image below to insert [IMAGE:index:name] marker at cursor position
+          </p>
+        </div>
+        
         <p style="font-size: 13px; margin-top: 10px; padding: 10px; background: var(--input-bg); border-radius: 6px; border-left: 3px solid var(--primary-color);">
-          ℹ️ <strong>Note:</strong> All existing images will be automatically preserved when you update the note. Only the title and text content can be edited.
+          ℹ️ <strong>Note:</strong> All existing images will be preserved. You can add new images, delete existing ones, or edit the title and text content.
         </p>
         
         <button onclick="updateNote()" style="background: #FFA500; margin-top: 15px;">
