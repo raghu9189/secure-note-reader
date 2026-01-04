@@ -124,6 +124,36 @@ function toggleSection(sectionId) {
 }
 
 /**
+ * Resize textarea for mobile (expand/collapse)
+ */
+function resizeTextarea(textareaId, action) {
+  const textarea = document.getElementById(textareaId);
+  const currentHeight = parseInt(getComputedStyle(textarea).height);
+  
+  if (action === 'expand') {
+    textarea.style.minHeight = (currentHeight + 100) + 'px';
+  } else if (action === 'collapse') {
+    const newHeight = Math.max(120, currentHeight - 100);
+    textarea.style.minHeight = newHeight + 'px';
+  }
+}
+
+/**
+ * Resize output/pre element for mobile (expand/collapse)
+ */
+function resizeOutput(outputId, action) {
+  const output = document.getElementById(outputId);
+  const currentMaxHeight = parseInt(getComputedStyle(output).maxHeight) || 400;
+  
+  if (action === 'expand') {
+    output.style.maxHeight = (currentMaxHeight + 200) + 'px';
+  } else if (action === 'collapse') {
+    const newHeight = Math.max(400, currentMaxHeight - 200);
+    output.style.maxHeight = newHeight + 'px';
+  }
+}
+
+/**
  * Handle image file selection
  */
 document.addEventListener('DOMContentLoaded', () => {
@@ -1230,6 +1260,8 @@ async function loadNotesList() {
  */
 function fillNoteId(id) {
   document.getElementById('noteId').value = id;
+  // Also populate update note input box
+  document.getElementById('updateNoteId').value = id;
   
   // If session key is set, auto-decrypt
   if (globalSessionKey) {

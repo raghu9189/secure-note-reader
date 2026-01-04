@@ -136,6 +136,10 @@
       min-height: 120px;
       resize: vertical;
       line-height: 1.6;
+      -webkit-appearance: none;
+      appearance: none;
+      touch-action: manipulation;
+      overflow: auto;
     }
 
     #noteTitle {
@@ -562,6 +566,8 @@
       textarea {
         min-height: 150px;
         font-size: 16px; /* Prevents zoom on iOS */
+        resize: vertical !important;
+        -webkit-overflow-scrolling: touch;
       }
 
       input {
@@ -573,6 +579,10 @@
         padding: 14px 20px;
         font-size: 16px;
         margin-bottom: 10px;
+      }
+
+      .textarea-resize-controls {
+        display: flex !important; /* Show on mobile */
       }
 
       .image-upload-btn {
@@ -790,7 +800,17 @@
     <div class="card">
       <h2>✍️ Create Secure Note</h2>
       <input type="text" id="noteTitle" placeholder="📝 Note Title (optional)" style="margin-bottom: 15px;">
-      <textarea id="note" placeholder="Write your secret note here..."></textarea>
+      <div style="position: relative;">
+        <textarea id="note" placeholder="Write your secret note here..."></textarea>
+        <div class="textarea-resize-controls" style="display: none; margin-top: 5px; gap: 5px;">
+          <button onclick="resizeTextarea('note', 'expand')" style="flex: 1; padding: 6px; font-size: 12px; background: var(--primary-color);">
+            ⬇️ Expand
+          </button>
+          <button onclick="resizeTextarea('note', 'collapse')" style="flex: 1; padding: 6px; font-size: 12px; background: var(--primary-color);">
+            ⬆️ Collapse
+          </button>
+        </div>
+      </div>
       
       <div class="image-upload-section">
         <strong>📷 Add Images (Optional)</strong>
@@ -876,7 +896,17 @@
       <p id="sessionKeyHint" style="display: none; font-size: 13px; margin-top: 10px; color: var(--primary-color); font-weight: 600;">
         ✨ Session key is active - password field is optional
       </p>
-      <pre id="output"></pre>
+      <div style="position: relative;">
+        <pre id="output"></pre>
+        <div class="textarea-resize-controls" style="display: none; margin-top: 5px; gap: 5px;">
+          <button onclick="resizeOutput('output', 'expand')" style="flex: 1; padding: 6px; font-size: 12px; background: var(--primary-color);">
+            ⬇️ Expand
+          </button>
+          <button onclick="resizeOutput('output', 'collapse')" style="flex: 1; padding: 6px; font-size: 12px; background: var(--primary-color);">
+            ⬆️ Collapse
+          </button>
+        </div>
+      </div>
     </div>
 
     <div class="card">
@@ -912,7 +942,17 @@
           <label style="display: block; font-weight: 600; margin-bottom: 6px; font-size: 13px;">
             📄 Content
           </label>
-          <textarea id="updateContent" placeholder="Edit your note content here..." rows="8" style="margin-bottom: 10px;"></textarea>
+          <div style="position: relative;">
+            <textarea id="updateContent" placeholder="Edit your note content here..." rows="8" style="margin-bottom: 5px;"></textarea>
+            <div class="textarea-resize-controls" style="display: none; margin-bottom: 10px; gap: 5px;">
+              <button onclick="resizeTextarea('updateContent', 'expand')" style="flex: 1; padding: 6px; font-size: 12px; background: var(--primary-color);">
+                ⬇️ Expand
+              </button>
+              <button onclick="resizeTextarea('updateContent', 'collapse')" style="flex: 1; padding: 6px; font-size: 12px; background: var(--primary-color);">
+                ⬆️ Collapse
+              </button>
+            </div>
+          </div>
           
           <!-- Existing Images Management -->
           <div id="updateImagesManager" style="margin-bottom: 15px;"></div>
