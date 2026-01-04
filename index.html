@@ -802,7 +802,7 @@
         <div style="background: var(--input-bg); padding: 12px; border-radius: 8px; margin-bottom: 12px; border: 2px solid var(--input-border);">
           <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 8px;">
             <input type="checkbox" id="compressImages" checked style="width: auto; margin: 0; cursor: pointer;">
-            <span style="font-weight: 600;">🗜️ Compress Images (Recommended)</span>
+            <span style="font-weight: 600;">🗜️ Compress</span>
           </label>
           <div id="compressionSettings" style="margin-left: 28px;">
             <label style="display: block; font-size: 13px; margin-bottom: 5px; color: var(--text-color); opacity: 0.8;">
@@ -880,7 +880,52 @@
     </div>
 
     <div class="card">
-      <h2>� Upload Encrypted Notes</h2>
+      <h2>✏️ Update Existing Note</h2>
+      <p class="info">
+        📝 Update an existing note with new content. Requires the original password to verify and re-encrypt.
+      </p>
+      <input id="updateNoteId" placeholder="Enter Note ID to update">
+      <div style="position: relative;">
+        <input id="updatePassword" type="password" placeholder="Enter original secret key (or use session key)" style="padding-right: 40px;">
+        <button 
+          onclick="togglePasswordVisibility('updatePassword', 'updatePasswordToggle')" 
+          id="updatePasswordToggle"
+          class="password-toggle"
+          title="Show/Hide password"
+        >
+          👁️
+        </button>
+      </div>
+      <button onclick="loadNoteForUpdate()" style="background: var(--primary-color); margin-bottom: 10px;">
+        📖 Load Note for Editing
+      </button>
+      <div id="updateNoteForm" style="display: none;">
+        <hr style="border: none; border-top: 1px solid var(--input-border); margin: 20px 0;">
+        <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px;">
+          📝 Note Title (Optional)
+        </label>
+        <input id="updateTitle" placeholder="Enter note title">
+        <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px; margin-top: 15px;">
+          📄 Note Content
+        </label>
+        <textarea id="updateContent" placeholder="Edit your note content here..." rows="8"></textarea>
+        
+        <p style="font-size: 13px; margin-top: 10px; padding: 10px; background: var(--input-bg); border-radius: 6px; border-left: 3px solid var(--primary-color);">
+          ℹ️ <strong>Note:</strong> All existing images will be automatically preserved when you update the note. Only the title and text content can be edited.
+        </p>
+        
+        <button onclick="updateNote()" style="background: #FFA500; margin-top: 15px;">
+          ✏️ Update & Save Changes
+        </button>
+      </div>
+      <p id="updateSessionKeyHint" style="display: none; font-size: 13px; margin-top: 10px; color: var(--primary-color); font-weight: 600;">
+        ✨ Session key is active - password field is optional
+      </p>
+      <div id="updateOutput"></div>
+    </div>
+
+    <div class="card">
+      <h2>📤 Upload Encrypted Notes</h2>
       <p class="info">
         📁 Upload previously downloaded encrypted notes to restore them.
       </p>

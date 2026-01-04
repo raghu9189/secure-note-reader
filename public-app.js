@@ -35,13 +35,15 @@ function setSessionKey() {
   
   statusDiv.innerHTML = '<div class="success" style="margin: 0;">✅ Session key set! You can now encrypt & decrypt notes without entering password each time.</div>';
   
-  // Show hints in both sections
+  // Show hints in all sections
   document.getElementById('sessionKeyHint').style.display = 'block';
   document.getElementById('createSessionKeyHint').style.display = 'block';
+  document.getElementById('updateSessionKeyHint').style.display = 'block';
   
   // Make password fields optional
   document.getElementById('readPassword').placeholder = 'Optional - using session key';
   document.getElementById('password').placeholder = 'Optional - using session key';
+  document.getElementById('updatePassword').placeholder = 'Optional - using session key';
 }
 
 /**
@@ -53,13 +55,15 @@ function clearSessionKey() {
   const statusDiv = document.getElementById('sessionStatus');
   statusDiv.innerHTML = '<div class="info" style="margin: 0;">🔒 Session key cleared</div>';
   
-  // Hide hints in both sections
+  // Hide hints in all sections
   document.getElementById('sessionKeyHint').style.display = 'none';
   document.getElementById('createSessionKeyHint').style.display = 'none';
+  document.getElementById('updateSessionKeyHint').style.display = 'none';
   
   // Reset password field placeholders
   document.getElementById('readPassword').placeholder = 'Enter secret key to decrypt';
   document.getElementById('password').placeholder = 'Enter a strong secret key (password)';
+  document.getElementById('updatePassword').placeholder = 'Enter original secret key';
   
   // Clear the input
   document.getElementById('sessionKey').value = '';
@@ -503,15 +507,29 @@ async function readNote() {
     }
     
     if (parsed.text) {
-      let textWithImages = escapeHtml(parsed.text);
+      // Replace inline image placeholders with actual images BEFORE escaping
+      let textWithImages = parsed.text;
       
-      // Replace inline image placeholders with actual images
+      // Sort placeholders by index to replace in correct order
       parsed.inlineImages.forEach(img => {
-        const imgTag = `<br><img src="${img.data}" alt="${img.name}" title="${img.name}" style="max-width: 100%; border-radius: 8px; margin: 10px 0;"><br>`;
+        const imgTag = `|||IMAGE_MARKER|||<img src="${img.data}" alt="${escapeHtml(img.name)}" title="${escapeHtml(img.name)}" style="max-width: 100%; border-radius: 8px; margin: 10px 0;">|||IMAGE_MARKER|||`;
         textWithImages = textWithImages.replace(img.placeholder, imgTag);
       });
       
-      outputHTML += textWithImages;
+      // Escape HTML for text content but preserve image markers
+      const parts = textWithImages.split('|||IMAGE_MARKER|||');
+      let finalText = '';
+      parts.forEach((part, index) => {
+        if (index % 2 === 0) {
+          // Text part - escape HTML
+          finalText += escapeHtml(part);
+        } else {
+          // Image tag - keep as is
+          finalText += part;
+        }
+      });
+      
+      outputHTML += finalText.replace(/\n/g, '<br>');
     }
     
     // Display remaining images at the end (old format)
@@ -532,6 +550,328 @@ async function readNote() {
       outputDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
     }
     console.error('Read note error:', error);
+  }
+}
+
+/**
+ * Load note for updating
+ */
+async function loadNoteForUpdate() {
+  const noteId = document.getElementById('updateNoteId').value.trim();
+  let password = document.getElementById('updatePassword').value.trim();
+  const outputDiv = document.getElementById('updateOutput');
+  const formDiv = document.getElementById('updateNoteForm');
+  
+  if (!noteId) {
+    outputDiv.innerHTML = '<div class="error">❌ Please enter a Note ID</div>';
+    return;
+  }
+  
+  // Use session key if available and no password provided
+  if (!password && globalSessionKey) {
+    password = globalSessionKey;
+  }
+  
+  if (!password) {
+    outputDiv.innerHTML = '<div class="error">❌ Please enter the password or set a session key</div>';
+    return;
+  }
+  
+  try {
+    outputDiv.innerHTML = '<div class="info">⏳ Loading note...</div>';
+    
+    // Fetch encrypted note
+    const res = await fetch(`${API_BASE}/note/${noteId}`);
+    if (!res.ok) {
+      if (res.status === 404) {
+        throw new Error('Note not found');
+      }
+      throw new Error('Failed to fetch note');
+    }
+    
+    const data = await res.json();
+    
+    outputDiv.innerHTML = '<div class="info">🔓 Decrypting note...</div>';
+    
+    // Decrypt the note using crypto.js decrypt function
+    const text = await decrypt(data, password);
+    
+    // Parse content
+    const parsed = parseContentWithImages(text);
+    
+    // Fill the form
+    document.getElementById('updateTitle').value = parsed.title || '';
+    document.getElementById('updateContent').value = parsed.text || '';
+    
+    // Show the form
+    formDiv.style.display = 'block';
+    
+    // Store note ID and parsed data for update
+    formDiv.dataset.noteId = noteId;
+    formDiv.dataset.parsedData = JSON.stringify(parsed); // Store parsed data including images
+    
+    // Display existing images with management controls
+    let imagesHTML = '';
+    const allImages = [...parsed.inlineImages, ...parsed.images.map(img => ({...img, placeholder: null}))];
+    
+    if (allImages.length > 0) {
+      imagesHTML = '<div id="updateImageManager" style="margin-top: 15px; padding: 15px; background: var(--input-bg); border-radius: 6px; border-left: 3px solid var(--primary-color);">';
+      imagesHTML += '<strong>📷 Manage Images:</strong><br>';
+      imagesHTML += '<p style="font-size: 12px; margin: 5px 0 10px 0; opacity: 0.8;">Click ❌ to delete an image</p>';
+      
+      allImages.forEach((img, idx) => {
+        const isInline = img.placeholder !== null && img.placeholder !== undefined;
+        const imageType = isInline ? 'Inline' : 'Additional';
+        imagesHTML += `
+          <div class="image-item" data-index="${idx}" style="display: flex; align-items: center; gap: 10px; margin: 10px 0; padding: 10px; background: var(--card-bg); border-radius: 6px; border: 1px solid var(--input-border);">
+            <img src="${img.data}" alt="${img.name}" style="max-width: 80px; max-height: 80px; border-radius: 4px; object-fit: cover;">
+            <div style="flex: 1;">
+              <div style="font-size: 13px; font-weight: 600;">${escapeHtml(img.name)}</div>
+              <div style="font-size: 11px; opacity: 0.7;">Type: ${imageType}</div>
+              <div style="font-size: 11px; opacity: 0.7;">Size: ${(img.data.length / 1024).toFixed(1)} KB</div>
+            </div>
+            <button onclick="deleteUpdateImage(${idx})" style="background: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 16px;" title="Delete this image">
+              ❌
+            </button>
+          </div>
+        `;
+      });
+      
+      imagesHTML += '</div>';
+    }
+    
+    outputDiv.innerHTML = '<div class="success">✅ Note loaded successfully! Edit the content below and click "Update & Save Changes".</div>' + imagesHTML;
+    
+  } catch (error) {
+    formDiv.style.display = 'none';
+    if (error.name === 'OperationError' || error.message.includes('operation-specific')) {
+      outputDiv.innerHTML = '<div class="error">❌ Invalid password - cannot decrypt note</div>';
+    } else {
+      outputDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+    }
+    console.error('Load note for update error:', error);
+  }
+}
+
+/**
+ * Delete image from update note
+ */
+function deleteUpdateImage(imageIndex) {
+  const formDiv = document.getElementById('updateNoteForm');
+  const parsed = JSON.parse(formDiv.dataset.parsedData);
+  
+  // Combine all images
+  const allImages = [...parsed.inlineImages, ...parsed.images.map(img => ({...img, placeholder: null}))];
+  
+  // Confirm deletion
+  const img = allImages[imageIndex];
+  if (!confirm(`Delete image "${img.name}"?\n\nThis will remove it from the note when you save.`)) {
+    return;
+  }
+  
+  // Remove the image
+  allImages.splice(imageIndex, 1);
+  
+  // Separate back into inline and regular images
+  parsed.inlineImages = allImages.filter(img => img.placeholder);
+  parsed.images = allImages.filter(img => !img.placeholder).map(img => ({name: img.name, data: img.data}));
+  
+  // Update stored data
+  formDiv.dataset.parsedData = JSON.stringify(parsed);
+  
+  // Re-render the image list
+  renderUpdateImages();
+  
+  // Show feedback
+  const outputDiv = document.getElementById('updateOutput');
+  const successMsg = document.createElement('div');
+  successMsg.className = 'success';
+  successMsg.style.margin = '10px 0';
+  successMsg.textContent = `✅ Image "${img.name}" removed. Click "Update & Save Changes" to save.`;
+  outputDiv.insertBefore(successMsg, outputDiv.firstChild);
+  setTimeout(() => successMsg.remove(), 3000);
+}
+
+/**
+ * Re-render the image management section
+ */
+function renderUpdateImages() {
+  const formDiv = document.getElementById('updateNoteForm');
+  const parsed = JSON.parse(formDiv.dataset.parsedData);
+  const imageManager = document.getElementById('updateImageManager');
+  
+  if (!imageManager) return;
+  
+  const allImages = [...parsed.inlineImages, ...parsed.images.map(img => ({...img, placeholder: null}))];
+  
+  if (allImages.length === 0) {
+    imageManager.innerHTML = '<div style="padding: 20px; text-align: center; opacity: 0.7;">All images removed</div>';
+    return;
+  }
+  
+  let imagesHTML = '<strong>📷 Manage Images:</strong><br>';
+  imagesHTML += '<p style="font-size: 12px; margin: 5px 0 10px 0; opacity: 0.8;">Click ❌ to delete an image</p>';
+  
+  allImages.forEach((img, idx) => {
+    const isInline = img.placeholder !== null && img.placeholder !== undefined;
+    const imageType = isInline ? 'Inline' : 'Additional';
+    imagesHTML += `
+      <div class="image-item" data-index="${idx}" style="display: flex; align-items: center; gap: 10px; margin: 10px 0; padding: 10px; background: var(--card-bg); border-radius: 6px; border: 1px solid var(--input-border);">
+        <img src="${img.data}" alt="${img.name}" style="max-width: 80px; max-height: 80px; border-radius: 4px; object-fit: cover;">
+        <div style="flex: 1;">
+          <div style="font-size: 13px; font-weight: 600;">${escapeHtml(img.name)}</div>
+          <div style="font-size: 11px; opacity: 0.7;">Type: ${imageType}</div>
+          <div style="font-size: 11px; opacity: 0.7;">Size: ${(img.data.length / 1024).toFixed(1)} KB</div>
+        </div>
+        <button onclick="deleteUpdateImage(${idx})" style="background: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 16px;" title="Delete this image">
+          ❌
+        </button>
+      </div>
+    `;
+  });
+  
+  imageManager.innerHTML = imagesHTML;
+}
+
+/**
+ * Update existing note
+ */
+async function updateNote() {
+  const formDiv = document.getElementById('updateNoteForm');
+  const noteId = formDiv.dataset.noteId;
+  const parsed = JSON.parse(formDiv.dataset.parsedData); // Get parsed data with (possibly modified) images
+  let password = document.getElementById('updatePassword').value.trim();
+  const title = document.getElementById('updateTitle').value.trim();
+  const content = document.getElementById('updateContent').value.trim();
+  const outputDiv = document.getElementById('updateOutput');
+  
+  if (!noteId) {
+    outputDiv.innerHTML = '<div class="error">❌ No note loaded. Please load a note first.</div>';
+    return;
+  }
+  
+  // Use session key if available and no password provided
+  if (!password && globalSessionKey) {
+    password = globalSessionKey;
+  }
+  
+  if (!password) {
+    outputDiv.innerHTML = '<div class="error">❌ Please enter the password or set a session key</div>';
+    return;
+  }
+  
+  if (!content) {
+    outputDiv.innerHTML = '<div class="error">❌ Content cannot be empty</div>';
+    return;
+  }
+  
+  try {
+    outputDiv.innerHTML = '<div class="info">⏳ Updating note...</div>';
+    
+    // First verify old password by trying to decrypt existing note
+    const checkRes = await fetch(`${API_BASE}/note/${noteId}`);
+    if (!checkRes.ok) {
+      if (checkRes.status === 404) {
+        throw new Error('Note not found');
+      }
+      throw new Error('Failed to fetch note');
+    }
+    
+    const oldData = await checkRes.json();
+    
+    // This will throw if password is wrong
+    await decrypt(oldData, password);
+    
+    // Use the parsed data (which may have deleted images)
+    const originalParsed = parsed;
+    
+    // Prepare new content with title
+    let fullContent = content;
+    if (title) {
+      fullContent = `[TITLE]${title}[/TITLE]\n\n${content}`;
+    }
+    
+    // Replace inline image placeholders with actual inline image markers
+    // Handle cases where images might have been deleted (placeholders may not match indices)
+    if (originalParsed.inlineImages.length > 0) {
+      originalParsed.inlineImages.forEach((img) => {
+        // Find and replace the specific placeholder for this image
+        if (img.placeholder) {
+          const inlineMarker = `[INLINE_IMG:${img.name}]${img.data}[/INLINE_IMG]`;
+          fullContent = fullContent.replace(img.placeholder, inlineMarker);
+        }
+      });
+      
+      // Clean up any remaining orphaned placeholders (from deleted images)
+      fullContent = fullContent.replace(/__INLINE_IMAGE_\d+__/g, '');
+    }
+    
+    // Append the old format images to the end of content (not inline)
+    if (originalParsed.images.length > 0) {
+      fullContent += '\n\n[ENCRYPTED_IMAGES_START]';
+      originalParsed.images.forEach(img => {
+        fullContent += `\n[IMG:${img.name}]${img.data}[/IMG]`;
+      });
+      fullContent += '\n[ENCRYPTED_IMAGES_END]';
+    }
+    
+    // Encrypt the updated content using crypto.js encrypt function
+    const encryptedData = await encrypt(fullContent, password);
+    
+    // Delete old note
+    const deleteRes = await fetch(`${API_BASE}/note/${noteId}`, {
+      method: 'DELETE'
+    });
+    
+    if (!deleteRes.ok) {
+      throw new Error('Failed to delete old note');
+    }
+    
+    // Create updated note with same ID
+    const createRes = await fetch(`${API_BASE}/note`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: noteId,
+        cipherText: encryptedData.cipherText,
+        iv: encryptedData.iv,
+        salt: encryptedData.salt,
+        createdAt: oldData.createdAt // Preserve original creation time
+      })
+    });
+    
+    if (!createRes.ok) {
+      throw new Error('Failed to save updated note');
+    }
+    
+    outputDiv.innerHTML = `
+      <div class="success">
+        ✅ <strong>Note updated successfully!</strong><br>
+        Note ID: <code class="mono">${noteId}</code>
+        <button class="copy-btn" onclick="copyToClipboard('${noteId}')">📋 Copy ID</button>
+      </div>
+    `;
+    
+    // Clear form
+    formDiv.style.display = 'none';
+    document.getElementById('updateNoteId').value = '';
+    document.getElementById('updatePassword').value = '';
+    document.getElementById('updateTitle').value = '';
+    document.getElementById('updateContent').value = '';
+    delete formDiv.dataset.parsedData; // Clear stored data
+    
+    // Reload notes list
+    setTimeout(() => {
+      loadNotesList();
+    }, 500);
+    
+  } catch (error) {
+    if (error.name === 'OperationError' || error.message.includes('operation-specific')) {
+      outputDiv.innerHTML = '<div class="error">❌ Invalid password - cannot update note</div>';
+    } else {
+      outputDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+    }
+    console.error('Update note error:', error);
   }
 }
 
