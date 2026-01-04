@@ -665,6 +665,7 @@ async function loadNotesList() {
           <div class="note-item-actions">
             <button class="note-item-btn" onclick="copyToClipboard('${note.id}')" title="Copy ID">📋</button>
             <button class="note-item-btn" onclick="fillNoteId('${note.id}')" title="Load to read">📖</button>
+            <button class="note-item-btn" onclick="downloadNote('${note.id}', event)" title="Download encrypted note">💾</button>
           </div>
         </div>
       `;
@@ -696,6 +697,87 @@ function fillNoteId(id) {
     setTimeout(() => {
       document.getElementById('readPassword').focus();
     }, 500);
+  }
+}
+
+/**
+ * Download a single encrypted note as JSON file
+ */
+async function downloadNote(noteId, event) {
+  try {
+    // Fetch the encrypted note
+    const res = await fetch(`${API_BASE}/note/${noteId}`);
+    if (!res.ok) {
+      throw new Error('Failed to fetch note');
+    }
+    
+    const noteData = await res.json();
+    
+    // Create download
+    const dataStr = JSON.stringify(noteData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `encrypted-note-${noteId}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    // Visual feedback
+    if (event && event.target) {
+      const btn = event.target;
+      const originalText = btn.textContent;
+      btn.textContent = '✅';
+      setTimeout(() => {
+        btn.textContent = originalText;
+      }, 1500);
+    }
+    
+  } catch (error) {
+    alert('Failed to download note: ' + error.message);
+    console.error('Download error:', error);
+  }
+}
+
+/**
+ * Download all encrypted notes as a single JSON file
+ */
+async function downloadAllNotes() {
+  try {
+    const res = await fetch(`${API_BASE}/notes/all`);
+    if (!res.ok) {
+      throw new Error('Failed to fetch notes');
+    }
+    
+    const allNotes = await res.json();
+    
+    if (allNotes.length === 0) {
+      alert('No notes to download');
+      return;
+    }
+    
+    // Create download with timestamp
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    const dataStr = JSON.stringify(allNotes, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `all-encrypted-notes-${timestamp}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    alert(`✅ Downloaded ${allNotes.length} encrypted note(s) successfully!`);
+    
+  } catch (error) {
+    alert('Failed to download notes: ' + error.message);
+    console.error('Download all error:', error);
   }
 }
 

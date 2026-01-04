@@ -169,6 +169,13 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // GET /notes/all - Get all notes with full encrypted data for backup
+  if (req.method === 'GET' && urlParts[0] === 'notes' && urlParts[1] === 'all' && urlParts.length === 2) {
+    const notes = readDB();
+    sendJSON(res, 200, notes);
+    return;
+  }
+
   // 404 - Route not found
   sendJSON(res, 404, { error: 'Route not found' });
 });
