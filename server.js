@@ -72,7 +72,7 @@ function sendJSON(res, statusCode, data) {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
+    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS'
   });
   res.end(JSON.stringify(data));
 }
@@ -84,7 +84,7 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(204, {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Headers': 'Content-Type',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
+      'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS'
     });
     res.end();
     return;
@@ -111,7 +111,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && urlParts[0] === 'note' && urlParts.length === 1) {
     try {
       const body = await parseBody(req);
-      const { cipherText, iv, salt } = body;
+      const { cipherText, iv, salt, id: customId, createdAt } = body;
 
       if (!cipherText || !iv || !salt) {
         sendJSON(res, 400, { error: 'Invalid payload' });
@@ -119,14 +119,22 @@ const server = http.createServer(async (req, res) => {
       }
 
       const notes = readDB();
-      const id = crypto.randomUUID();
+      
+      // Use custom ID if provided (for uploads), otherwise generate new one
+      const id = customId || crypto.randomUUID();
+      
+      // Check if ID already exists
+      if (notes.some(n => n.id === id)) {
+        sendJSON(res, 409, { error: 'Note with this ID already exists' });
+        return;
+      }
 
       notes.push({
         id,
         cipherText,
         iv,
         salt,
-        createdAt: Date.now()
+        createdAt: createdAt || Date.now()
       });
 
       writeDB(notes);
@@ -166,6 +174,30 @@ const server = http.createServer(async (req, res) => {
       };
     });
     sendJSON(res, 200, notesList);
+    return;
+  }
+
+  // GET /notes/all - Get all notes with full encrypted data for backup
+  if (req.method === 'GET' && urlParts[0] === 'notes' && urlParts[1] === 'all' && urlParts.length === 2) {
+    const notes = readDB();
+    sendJSON(res, 200, notes);
+    return;
+  }
+
+  // DELETE /note/:id - Delete a note
+  if (req.method === 'DELETE' && urlParts[0] === 'note' && urlParts.length === 2) {
+    const noteId = urlParts[1];
+    const notes = readDB();
+    const noteIndex = notes.findIndex(n => n.id === noteId);
+
+    if (noteIndex === -1) {
+      sendJSON(res, 404, { error: 'Note not found' });
+      return;
+    }
+
+    notes.splice(noteIndex, 1);
+    writeDB(notes);
+    sendJSON(res, 200, { message: 'Note deleted successfully', id: noteId });
     return;
   }
 

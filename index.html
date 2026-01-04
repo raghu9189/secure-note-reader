@@ -227,6 +227,34 @@
       accent-color: #667eea;
     }
 
+    /* Password Toggle Button Styling */
+    .password-toggle {
+      position: absolute;
+      right: 5px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      padding: 5px 8px;
+      color: var(--text-color);
+      opacity: 0.6;
+      transition: opacity 0.2s;
+      z-index: 10;
+      pointer-events: auto;
+      line-height: 1;
+      min-width: auto;
+      width: auto;
+      height: auto;
+    }
+
+    .password-toggle:hover {
+      opacity: 1;
+      transform: translateY(-50%) scale(1.1);
+      box-shadow: none;
+    }
+
     #output {
       background: var(--output-bg);
       padding: 20px;
@@ -329,13 +357,15 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      min-width: 0; /* Allow flex item to shrink */
     }
 
     .note-item-date {
       font-size: 12px;
       color: var(--text-color);
       opacity: 0.7;
-      white-space: nowrap;
+      white-space: normal; /* Allow wrapping on mobile */
+      line-height: 1.4;
     }
 
     .note-item-actions {
@@ -502,15 +532,21 @@
 
       h1 {
         font-size: 1.8em;
-        margin-top: 40px;
+        margin-top: 50px;
         margin-bottom: 20px;
       }
 
       .theme-toggle {
-        top: 5px;
-        right: 5px;
-        padding: 8px 16px;
-        font-size: 1em;
+        top: 10px;
+        right: 10px;
+        padding: 10px 18px;
+        font-size: 1.1em;
+        border-radius: 25px;
+        min-width: 44px;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
 
       .card {
@@ -587,6 +623,53 @@
         font-size: 14px;
         padding: 12px;
       }
+
+      /* Mobile notes list improvements */
+      .notes-header {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 10px;
+      }
+
+      .notes-header p {
+        font-size: 13px !important;
+        text-align: center;
+      }
+
+      .notes-header button {
+        width: 100%;
+      }
+
+      .note-item {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 12px;
+        gap: 8px;
+      }
+
+      .note-item-id {
+        font-size: 13px;
+        max-width: 100%;
+        word-break: break-all;
+      }
+
+      .note-item-date {
+        font-size: 11px;
+        width: 100%;
+        white-space: normal;
+      }
+
+      .note-item-actions {
+        width: 100%;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      .note-item-btn {
+        font-size: 14px;
+        padding: 8px 12px;
+        min-width: 44px;
+      }
     }
 
     /* Extra small devices (phones in portrait) */
@@ -606,6 +689,34 @@
       .decrypted-content {
         font-size: 14px;
         padding: 15px;
+      }
+
+      .note-item {
+        padding: 10px;
+      }
+
+      .note-item-id {
+        font-size: 12px;
+      }
+
+      .note-item-date {
+        font-size: 10px;
+      }
+
+      .note-item-btn {
+        font-size: 16px;
+        padding: 10px 14px;
+        flex: 1;
+      }
+
+      .note-item-actions {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 5px;
+      }
+
+      #notesList {
+        max-height: 250px !important;
       }
 
       .image-upload-btn {
@@ -660,10 +771,8 @@
           <button 
             onclick="toggleSessionKeyVisibility()" 
             id="sessionKeyToggle"
-            style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; font-size: 18px; padding: 5px 8px; color: var(--text-color); opacity: 0.6; transition: opacity 0.2s;"
+            class="password-toggle"
             title="Show/Hide password"
-            onmouseover="this.style.opacity='1'" 
-            onmouseout="this.style.opacity='0.6'"
           >
             👁️
           </button>
@@ -693,7 +802,7 @@
         <div style="background: var(--input-bg); padding: 12px; border-radius: 8px; margin-bottom: 12px; border: 2px solid var(--input-border);">
           <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 8px;">
             <input type="checkbox" id="compressImages" checked style="width: auto; margin: 0; cursor: pointer;">
-            <span style="font-weight: 600;">🗜️ Compress Images (Recommended)</span>
+            <span style="font-weight: 600;">🗜️ Compress</span>
           </label>
           <div id="compressionSettings" style="margin-left: 28px;">
             <label style="display: block; font-size: 13px; margin-bottom: 5px; color: var(--text-color); opacity: 0.8;">
@@ -726,6 +835,9 @@
         <p style="font-size: 13px; margin-top: 10px; padding: 10px; background: var(--input-bg); border-radius: 6px; border-left: 3px solid var(--primary-color);">
           💡 <strong>Tip:</strong> Place cursor in text where you want an image, then click "Insert Here" button on the image preview.
         </p>
+        <p style="font-size: 12px; margin-top: 8px; padding: 8px; background: var(--input-bg); border-radius: 6px; color: var(--text-color); opacity: 0.7;">
+          📸 <strong>Supported formats:</strong> PNG, JPEG, JPG, WebP, HEIC/HEIF, TIFF, AVIF, and more. All images are automatically converted to JPEG for optimal compression and faster encryption.
+        </p>
       </div>
 
       <div style="position: relative;">
@@ -733,10 +845,8 @@
         <button 
           onclick="togglePasswordVisibility('password', 'passwordToggle')" 
           id="passwordToggle"
-          style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; font-size: 18px; padding: 5px 8px; color: var(--text-color); opacity: 0.6; transition: opacity 0.2s;"
+          class="password-toggle"
           title="Show/Hide password"
-          onmouseover="this.style.opacity='1'" 
-          onmouseout="this.style.opacity='0.6'"
         >
           👁️
         </button>
@@ -756,10 +866,8 @@
         <button 
           onclick="togglePasswordVisibility('readPassword', 'readPasswordToggle')" 
           id="readPasswordToggle"
-          style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; font-size: 18px; padding: 5px 8px; color: var(--text-color); opacity: 0.6; transition: opacity 0.2s;"
+          class="password-toggle"
           title="Show/Hide password"
-          onmouseover="this.style.opacity='1'" 
-          onmouseout="this.style.opacity='0.6'"
         >
           👁️
         </button>
@@ -772,7 +880,131 @@
     </div>
 
     <div class="card">
-      <h2>📋 All Saved Notes</h2>
+      <div onclick="toggleSection('updateNoteSection')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+        <h2 style="margin: 0;">✏️ Update Existing Note</h2>
+        <span id="updateNoteSectionToggle" style="font-size: 24px; transition: transform 0.3s;">▼</span>
+      </div>
+      <div id="updateNoteSection" style="display: none; margin-top: 15px;">
+        <p style="font-size: 13px; opacity: 0.8; margin-bottom: 15px;">
+          📝 Edit an existing note. Verify with original password.
+        </p>
+        <input id="updateNoteId" placeholder="Enter Note ID to update" style="margin-bottom: 10px;">
+        <div style="position: relative; margin-bottom: 10px;">
+          <input id="updatePassword" type="password" placeholder="Enter original secret key (or use session key)" style="padding-right: 40px;">
+          <button 
+            onclick="togglePasswordVisibility('updatePassword', 'updatePasswordToggle')" 
+            id="updatePasswordToggle"
+            class="password-toggle"
+            title="Show/Hide password"
+          >
+            👁️
+          </button>
+        </div>
+        <button onclick="loadNoteForUpdate()" style="background: var(--primary-color); width: 100%;">
+          📖 Load Note for Editing
+        </button>
+        <div id="updateNoteForm" style="display: none; margin-top: 15px;">
+          <hr style="border: none; border-top: 1px solid var(--input-border); margin: 15px 0;">
+          <label style="display: block; font-weight: 600; margin-bottom: 6px; font-size: 13px;">
+            📝 Title (Optional)
+          </label>
+          <input id="updateTitle" placeholder="Enter note title" style="margin-bottom: 10px;">
+          <label style="display: block; font-weight: 600; margin-bottom: 6px; font-size: 13px;">
+            📄 Content
+          </label>
+          <textarea id="updateContent" placeholder="Edit your note content here..." rows="8" style="margin-bottom: 10px;"></textarea>
+          
+          <!-- Existing Images Management -->
+          <div id="updateImagesManager" style="margin-bottom: 15px;"></div>
+          
+          <!-- Image Upload Section for Update -->
+          <div style="padding: 12px; background: var(--input-bg); border-radius: 6px; border-left: 3px solid var(--primary-color); margin-bottom: 10px;">
+            <label style="display: block; font-weight: 600; margin-bottom: 8px; font-size: 13px;">
+              📷 Add New Images
+            </label>
+          
+            <!-- Compression Quality Slider -->
+            <div style="margin-bottom: 10px; padding: 10px; background: var(--card-bg); border-radius: 6px;">
+              <label style="display: flex; align-items: center; margin-bottom: 6px; font-size: 12px;">
+                <input type="checkbox" id="updateCompressToggle" checked style="margin-right: 6px; width: 16px; height: 16px; cursor: pointer;" 
+                       onchange="document.getElementById('updateCompressionControls').style.display = this.checked ? 'block' : 'none'">
+                <span style="font-weight: 600;">🗜️ Adjust Quality</span>
+              </label>
+              <p style="font-size: 10px; margin: 3px 0; opacity: 0.7;">
+                ⚠️ All images → JPEG
+              </p>
+              <div id="updateCompressionControls">
+                <label style="display: block; font-size: 11px; margin-bottom: 3px; opacity: 0.8;">
+                  Quality: <span id="updateQualityValue">80</span>%
+                </label>
+                <input type="range" id="updateQualitySlider" min="10" max="100" value="80" 
+                       style="width: 100%; cursor: pointer;" 
+                       oninput="document.getElementById('updateQualityValue').textContent = this.value">
+                <div style="display: flex; justify-content: space-between; font-size: 10px; margin-top: 2px; opacity: 0.6;">
+                  <span>Small</span>
+                  <span>Quality</span>
+                </div>
+              </div>
+            </div>
+          
+            <input type="file" id="updateImageUpload" accept="image/*" multiple style="display: none;" onchange="handleUpdateImageUpload(event)">
+            <div style="display: flex; gap: 5px; margin-bottom: 8px;">
+              <button class="image-upload-btn" onclick="document.getElementById('updateImageUpload').click()" style="flex: 1; font-size: 12px; padding: 8px;">
+                📁 Upload
+              </button>
+              <button class="image-upload-btn" onclick="pasteUpdateImage()" style="flex: 1; font-size: 12px; padding: 8px;">
+                📋 Paste
+              </button>
+            </div>
+            <div id="updateImagePreview" class="image-preview-container"></div>
+            <p style="font-size: 11px; margin-top: 6px; opacity: 0.7;">
+              💡 Click image to insert at cursor
+            </p>
+          </div>
+          
+          <button onclick="updateNote()" style="background: #FFA500; width: 100%; font-weight: 600;">
+            ✏️ Update & Save
+          </button>
+        </div>
+        <p id="updateSessionKeyHint" style="display: none; font-size: 12px; margin-top: 8px; color: var(--primary-color); font-weight: 600;">
+          ✨ Session key active
+        </p>
+        <div id="updateOutput" style="margin-top: 10px;"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div onclick="toggleSection('uploadNotesSection')" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+        <h2 style="margin: 0;">📤 Upload Encrypted Notes</h2>
+        <span id="uploadNotesSectionToggle" style="font-size: 24px; transition: transform 0.3s;">▼</span>
+      </div>
+      <div id="uploadNotesSection" style="display: none; margin-top: 15px;">
+        <p style="font-size: 13px; opacity: 0.8; margin-bottom: 15px;">
+          📁 Restore previously downloaded notes.
+        </p>
+        <input type="file" id="encryptedFileUpload" accept=".json,application/json" multiple style="display: none;">
+        <button onclick="document.getElementById('encryptedFileUpload').click()" style="width: 100%;">
+          📤 Select JSON File(s)
+        </button>
+        <div id="uploadStatus" style="font-size: 12px; padding: 8px; background: var(--input-bg); border-radius: 6px; border-left: 3px solid var(--primary-color); display: none; margin-top: 10px;">
+        </div>
+        <p style="font-size: 11px; opacity: 0.7; margin-top: 8px;">
+          💡 Select multiple files at once<br>
+          <span style="font-size: 10px;">ℹ️ Browser console may show 404 errors - this is normal (checking for duplicates)</span>
+        </p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>�📋 All Saved Notes</h2>
+      <div class="notes-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 10px; flex-wrap: wrap;">
+        <p style="font-size: 14px; margin: 0; opacity: 0.8; flex: 1; min-width: 150px;">
+          Click on any note to view or download
+        </p>
+        <button onclick="downloadAllNotes()" style="font-size: 13px; padding: 8px 16px; white-space: nowrap;">
+          💾 Download All
+        </button>
+      </div>
       <div id="notesList" style="max-height: 300px; overflow-y: auto; border: 2px solid var(--input-border); border-radius: 8px; background: var(--input-bg);">
         <div style="padding: 20px; text-align: center; color: var(--text-color); opacity: 0.6;">
           Loading notes...
@@ -803,10 +1035,11 @@
       localStorage.setItem('theme', isDark ? 'dark' : 'light');
     }
 
-    // Load saved theme on page load
+    // Load saved theme on page load (default to dark mode)
     document.addEventListener('DOMContentLoaded', () => {
       const savedTheme = localStorage.getItem('theme');
-      if (savedTheme === 'dark') {
+      // Default to dark mode if no saved preference
+      if (savedTheme === 'dark' || !savedTheme) {
         document.body.classList.add('dark-mode');
       }
     });
